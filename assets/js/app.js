@@ -600,6 +600,10 @@ function collectMappingHints(file, options) {
     hints.push(file.mappingHint);
   }
 
+  if (file.attentionSummary) {
+    hints.push(file.attentionSummary);
+  }
+
   if (file.status === 'mapping') {
     const type = (file.type || '').toLowerCase();
     switch (type) {
