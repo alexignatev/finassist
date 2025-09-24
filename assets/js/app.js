@@ -587,7 +587,55 @@ function renderPeriodGroups(files) {
   requestAnimationFrame(renderNextYear);
 }
 
+function collectMappingHints(file, options) {
+  if (!file || options?.showHint === false) {
+    return [];
+  }
+
+  const hints = [];
+
+  if (Array.isArray(file.mappingHints)) {
+    hints.push(...file.mappingHints.filter(Boolean));
+  } else if (file.mappingHint) {
+    hints.push(file.mappingHint);
+  }
+
+  if (file.status === 'mapping') {
+    const type = (file.type || '').toLowerCase();
+    switch (type) {
+      case 'запасы':
+        hints.push(
+          'Сверьте склад и подразделение: часть строк пришла из архивных выгрузок',
+          'Проверьте сроки годности и отметку неликвида перед загрузкой'
+        );
+        break;
+      case 'дебиторка':
+        hints.push(
+          'Подтвердите валюту и курс пересчёта — файл содержит несколько валют',
+          'Сопоставьте ИНН и договор, чтобы исключить задвоение контрагентов'
+        );
+        break;
+      case 'прочее':
+        hints.push(
+          'Определите назначение файла: бухгалтерия пометила его как «Прочее»',
+          'Уточните период отчётности — название содержит только квартал'
+        );
+        break;
+      default:
+        break;
+    }
+
+    if ((file.format || '').toLowerCase() === 'csv') {
+      hints.push('Проверьте разделитель и кодировку — файл загружен в формате CSV');
+    }
+  }
+
+  return [...new Set(hints)];
+}
+
 function createFileRow(file, options = {}) {
+  const hints = collectMappingHints(file, options);
+
   if (options.compact) {
     const row = document.createElement('div');
     row.className = 'file-row file-row--compact';
@@ -617,9 +665,9 @@ function createFileRow(file, options = {}) {
     status.textContent = statusLabel(file.status);
     row.appendChild(status);
 
-    if (file.mappingHint && options.showHint !== false) {
+    if (hints.length) {
       const hint = document.createElement('span');
-      hint.textContent = file.mappingHint;
+      hint.textContent = hints.join(' • ');
       hint.className = 'section-subtitle';
       hint.style.gridColumn = '1 / -1';
       row.appendChild(hint);
@@ -638,9 +686,7 @@ function createFileRow(file, options = {}) {
     return row;
   }
 
-  const hasExpandableContent = Boolean(
-    (file.mappingHint && options.showHint !== false) || options.actions
-  );
+  const hasExpandableContent = Boolean(hints.length || options.actions);
 
   const container = document.createElement(hasExpandableContent ? 'details' : 'article');
   container.className = 'file-card';
@@ -715,11 +761,16 @@ function createFileRow(file, options = {}) {
     const body = document.createElement('div');
     body.className = 'file-card__body';
 
-    if (file.mappingHint && options.showHint !== false) {
-      const hint = document.createElement('p');
-      hint.className = 'file-card__hint section-subtitle';
-      hint.textContent = file.mappingHint;
-      body.appendChild(hint);
+    if (hints.length) {
+      const hintList = document.createElement('div');
+      hintList.className = 'file-card__hints';
+      hints.forEach((hintText) => {
+        const hint = document.createElement('p');
+        hint.className = 'file-card__hint section-subtitle';
+        hint.textContent = hintText;
+        hintList.appendChild(hint);
+      });
+      body.appendChild(hintList);
     }
 
     if (options.actions) {
