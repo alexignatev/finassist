@@ -13,7 +13,7 @@
         <div class="header-top">
           <div class="header-text">
             <h1>Solward</h1>
-            <p>Интерактивный прототип: загрузка группы файлов, консолидация и триада отчётов.</p>
+            <p>Интерактивный прототип: загрузка группы файлов, консолидация и ключевые аналитические экраны.</p>
           </div>
           <button
             id="themeToggle"
@@ -82,7 +82,7 @@
               <strong id="summary-companies">0</strong>
               <span>Компаний</span>
               <p id="recognition-legend" class="section-subtitle">
-                Распознано: 0 • Требует маппинга: 0 • Дубликаты: 0
+                Распознано: 0 • Требует сверки: 0 • Дубликаты: 0
               </p>
             </article>
             <article class="summary-card">
@@ -116,25 +116,27 @@
               <p class="section-subtitle">
                 Подтвердите подсказки системы, чтобы перейти к консолидации. Все предположения уже заполнены.
               </p>
-              <p class="section-subtitle subtle-note">Мастер маппинга доступен в панели действий ниже.</p>
+              <p class="section-subtitle subtle-note">Мастер сверки доступен в панели действий ниже.</p>
             </div>
           </div>
           <div class="file-list" id="attentionList" aria-live="polite"></div>
           <div class="section-title">
             <div>
               <h3 class="section-subtitle">Дубликаты</h3>
-              <p class="section-subtitle">Выберите действие для каждого дубликата — оставить, архивировать или склеить.</p>
+              <p class="section-subtitle">
+                Выберите группу файлов и завершите решение в плавающей панели справа: оставить старый, оставить новый или склеить.
+              </p>
             </div>
           </div>
           <div class="file-list" id="duplicateList" aria-live="polite"></div>
           <div class="upload-actions" role="complementary">
             <div class="upload-actions__info">
               <h3 class="section-subtitle">Панель действий</h3>
-              <p class="section-subtitle">Переходите к маппингу и запускайте консолидацию из одного места.</p>
+              <p class="section-subtitle">Переходите к сверке и запускайте консолидацию из одного места.</p>
             </div>
             <div class="upload-actions__buttons">
               <button id="startMapping" type="button" class="button-secondary" disabled>
-                Открыть мастер маппинга
+                Открыть мастер сверки
               </button>
               <button id="startConsolidation" class="button-primary" type="button" disabled>
                 Начать консолидацию
@@ -163,11 +165,11 @@
         <section id="triad-screen" class="screen" aria-labelledby="triad-title">
           <div class="section-title">
             <div>
-              <h2 id="triad-title">Триада готова</h2>
-              <p class="section-subtitle">Быстрый переход между консолидированными отчётами и детекторами рисков.</p>
+              <h2 id="triad-title">Комплекс отчётов готов</h2>
+              <p class="section-subtitle">Минуты вместо дней. Минимум ручного труда. Консолидация завершена.</p>
             </div>
           </div>
-          <nav class="triad-nav" aria-label="Экран триады">
+          <nav class="triad-nav" aria-label="Навигация по экрану отчётов">
             <button type="button" class="triad-nav-btn" data-target="consolidation" aria-pressed="true">
               Консолидация
             </button>
@@ -187,19 +189,21 @@
           <div id="triad-panels">
             <div id="panel-consolidation" class="triad-panel" role="region" aria-labelledby="triad-title">
               <div class="metrics-grid" id="consolidationMetrics"></div>
-              <label class="toggle">
-                <input type="checkbox" id="toggleElimination" checked />
-                <span>Показать элиминации внутригрупповых оборотов</span>
-              </label>
-              <button
-                id="showEliminations"
-                class="button-secondary"
-                type="button"
-                aria-expanded="false"
-                aria-controls="eliminationDetails"
-              >
-                Показать устранённые внутригрупповые обороты
-              </button>
+              <div class="elimination-controls">
+                <label class="toggle">
+                  <input type="checkbox" id="toggleElimination" checked />
+                  <span>Показать элиминации внутригрупповых оборотов</span>
+                </label>
+                <button
+                  id="showEliminations"
+                  class="button-secondary elimination-button"
+                  type="button"
+                  aria-expanded="false"
+                  aria-controls="eliminationDetails"
+                >
+                  Показать устранённые внутригрупповые обороты
+                </button>
+              </div>
               <div id="eliminationDetails" class="elimination-list" hidden></div>
               <aside class="info-hints" id="consolidationHints"></aside>
               <aside class="info-hints" id="consolidationRules"></aside>
@@ -281,14 +285,28 @@
       </main>
     </div>
     <a id="ctaButton" class="cta-floating" href="#" target="_blank" rel="noopener">Записаться на тест-драйв</a>
+    <div id="duplicateActionPanel" class="floating-panel" hidden aria-live="polite">
+      <div class="floating-panel__header">
+        <h3>Решение по дубликатам</h3>
+        <button type="button" class="button-ghost" id="closeDuplicatePanel" aria-label="Свернуть панель">×</button>
+      </div>
+      <p class="section-subtitle" id="duplicatePanelHint">
+        Выберите группу отчётов слева, чтобы принять решение.
+      </p>
+      <div id="duplicateActionList" class="floating-panel__list"></div>
+      <div class="floating-panel__actions">
+        <button type="button" class="button-secondary" data-action="keepOld">Оставить старый</button>
+        <button type="button" class="button-secondary" data-action="keepNew">Оставить новый</button>
+        <button type="button" class="button-primary" data-action="merge">Склеить</button>
+      </div>
+    </div>
     <template id="mappingStepTemplate">
       <div class="modal" role="dialog" aria-modal="true" aria-live="polite">
-        <h3 data-role="title"></h3>
-        <p data-role="description"></p>
-        <p><strong data-role="suggestion"></strong></p>
+        <h3>Сверка данных перед консолидацией</h3>
+        <div data-role="list" class="modal-list"></div>
         <div class="modal-actions">
-          <button type="button" class="button-secondary" data-role="cancel">Позже</button>
-          <button type="button" class="button-primary" data-role="confirm">Подтвердить</button>
+          <button type="button" class="button-secondary" data-role="cancel">Закрыть</button>
+          <button type="button" class="button-primary" data-role="confirm">Подтвердить сверку</button>
         </div>
       </div>
     </template>

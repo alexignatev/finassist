@@ -4,6 +4,7 @@ const state = {
   currentScenario: null,
   mappingComplete: false,
   duplicateDecisions: new Map(),
+  activeDuplicateGroup: null,
   flaggedReceivables: new Set(),
   threshold: null,
   inventoryFilters: new Set(),
@@ -73,6 +74,11 @@ function cacheElements() {
   elements.panelPeriods = document.getElementById('panel-periods');
   elements.attentionList = document.getElementById('attentionList');
   elements.duplicateList = document.getElementById('duplicateList');
+  elements.duplicatePanel = document.getElementById('duplicateActionPanel');
+  elements.duplicatePanelList = document.getElementById('duplicateActionList');
+  elements.duplicatePanelHint = document.getElementById('duplicatePanelHint');
+  elements.closeDuplicatePanel = document.getElementById('closeDuplicatePanel');
+  elements.duplicatePanelButtons = document.querySelectorAll('#duplicateActionPanel [data-action]');
   elements.startMapping = document.getElementById('startMapping');
   elements.startConsolidation = document.getElementById('startConsolidation');
   elements.uploadScreen = document.getElementById('upload-screen');
@@ -218,6 +224,19 @@ function setupEventHandlers() {
   elements.startMapping.addEventListener('click', openMappingWizard);
   elements.startConsolidation.addEventListener('click', startConsolidation);
 
+  if (elements.closeDuplicatePanel) {
+    elements.closeDuplicatePanel.addEventListener('click', hideDuplicatePanel);
+  }
+
+  elements.duplicatePanelButtons?.forEach((button) => {
+    button.addEventListener('click', () => {
+      if (!state.activeDuplicateGroup) {
+        return;
+      }
+      handleDuplicateDecision(state.activeDuplicateGroup, button.dataset.action);
+    });
+  });
+
   elements.triadNavButtons.forEach((button) => {
     button.addEventListener('click', () => switchTriadPanel(button.dataset.target, button));
   });
@@ -289,6 +308,8 @@ function loadScenario(scenario, uploadedCount = 0) {
   state.currentScenario = scenario;
   state.mappingComplete = scenario.mappingSteps?.length === 0;
   state.duplicateDecisions = new Map();
+  state.activeDuplicateGroup = null;
+  hideDuplicatePanel();
   state.flaggedReceivables.clear();
   state.inventoryFilters.clear();
   state.liquidationCleaned = false;
@@ -337,7 +358,7 @@ function renderScenarioSummary() {
   elements.summaryFormats.textContent = scenario.summary.formats.join(' • ');
   const uploadInfo = state.lastUploadCount ? `Загружено: ${state.lastUploadCount}` : 'Готовый демо-набор';
   elements.summaryDescription.textContent = `${uploadInfo}. Сценарий: ${scenario.summary.description}.`;
-  elements.recognitionLegend.textContent = `Распознано: ${scenario.recognition.recognized} • Требует маппинга: ${scenario.recognition.needsMapping} • Дубликаты: ${scenario.recognition.duplicates}`;
+  elements.recognitionLegend.textContent = `Распознано: ${scenario.recognition.recognized} • Требует сверки: ${scenario.recognition.needsMapping} • Дубликаты: ${scenario.recognition.duplicates}`;
   elements.badgeFiles.textContent = `Файлов: ${scenario.summary.files}`;
   elements.badgeCompanies.textContent = `Компаний: ${scenario.summary.companies}`;
   elements.badgePeriods.textContent = `Периодов: ${scenario.summary.periods}`;
@@ -595,7 +616,7 @@ function createFileRow(file, options = {}) {
 function statusLabel(status = 'recognized') {
   const map = {
     recognized: 'Распознано',
-    mapping: 'Нужен маппинг',
+    mapping: 'Нужна сверка',
     duplicate: 'Дубликат'
   };
   return map[status] || status;
@@ -608,7 +629,7 @@ function renderAttentionList() {
   if (!needsMapping.length) {
     const message = document.createElement('p');
     message.className = 'section-subtitle';
-    message.textContent = 'Все файлы распознаны. Маппинг не требуется.';
+    message.textContent = 'Все файлы распознаны. Сверка не требуется.';
     elements.attentionList.appendChild(message);
     return;
   }
@@ -626,92 +647,183 @@ function renderDuplicateList() {
     message.className = 'section-subtitle';
     message.textContent = 'Дубликатов не найдено.';
     elements.duplicateList.appendChild(message);
+    hideDuplicatePanel();
     return;
   }
 
-  groups.forEach((group) => {
-    const details = document.createElement('details');
-    details.className = 'file-group';
-    details.open = true;
-    const summary = document.createElement('summary');
-    summary.textContent = `Возможный дубликат: ${group.group}`;
-    details.appendChild(summary);
+  const unresolved = groups.filter((group) => !state.duplicateDecisions.has(group.group));
 
-    group.files.forEach((name) => {
+  if (!unresolved.length) {
+    const message = document.createElement('p');
+    message.className = 'section-subtitle';
+    message.textContent = 'Все дубликаты разобраны.';
+    elements.duplicateList.appendChild(message);
+    if (elements.duplicatePanel) {
+      clearDuplicatePanel('Все дубликаты обработаны.');
+      elements.duplicatePanel.setAttribute('hidden', '');
+    }
+    return;
+  }
+
+  unresolved.forEach((group) => {
+    const card = document.createElement('article');
+    card.className = 'duplicate-card';
+    card.dataset.group = group.group;
+
+    const header = document.createElement('div');
+    header.className = 'duplicate-card__header';
+    const title = document.createElement('h4');
+    title.textContent = group.group;
+    const count = document.createElement('span');
+    count.className = 'section-subtitle';
+    count.textContent = `Файлов в группе: ${group.files.length}`;
+    header.appendChild(title);
+    header.appendChild(count);
+    card.appendChild(header);
+
+    const preview = document.createElement('ul');
+    preview.className = 'duplicate-card__list';
+    group.files.slice(0, 3).forEach((name) => {
       const original = state.currentScenario.files.find((file) => file.name === name);
-      const fileRow = createFileRow(
-        original || {
-          name,
-          type: 'Отчёт',
-          periodLabel: '—',
-          origin: '—',
-          status: 'duplicate'
-        },
-        { showHint: false }
-      );
-      details.appendChild(fileRow);
+      const item = document.createElement('li');
+      item.textContent = original
+        ? `${original.name} • ${original.periodLabel || original.period || '—'}`
+        : name;
+      preview.appendChild(item);
     });
+    if (group.files.length > 3) {
+      const more = document.createElement('li');
+      more.className = 'duplicate-card__more';
+      more.textContent = `…и ещё ${group.files.length - 3}`;
+      preview.appendChild(more);
+    }
+    card.appendChild(preview);
 
-    const actionRow = document.createElement('div');
-    actionRow.className = 'file-row';
-    actionRow.style.gridTemplateColumns = '1fr';
-    const message = document.createElement('span');
-    message.id = `duplicate-msg-${group.group}`;
-    message.textContent = 'Выберите действие:';
-    actionRow.appendChild(message);
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'button-ghost duplicate-card__action';
+    button.textContent = 'Рассмотреть';
+    button.addEventListener('click', () => showDuplicateInPanel(group));
+    card.appendChild(button);
 
-    const actions = document.createElement('div');
-    actions.className = 'file-actions';
+    if (state.activeDuplicateGroup === group.group) {
+      card.classList.add('duplicate-card--active');
+    }
 
-    ['keepNew', 'keepOld', 'merge'].forEach((action) => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'button-secondary';
-      button.dataset.action = action;
-      const labels = {
-        keepNew: 'Оставить новый',
-        keepOld: 'Оставить старый',
-        merge: 'Склеить'
-      };
-      button.textContent = labels[action];
-      button.addEventListener('click', () => handleDuplicateDecision(group, action));
-      actions.appendChild(button);
+    elements.duplicateList.appendChild(card);
+  });
+
+  if (elements.duplicatePanel) {
+    elements.duplicatePanel.removeAttribute('hidden');
+    if (!unresolved.some((group) => group.group === state.activeDuplicateGroup)) {
+      clearDuplicatePanel();
+    }
+  }
+}
+
+function handleDuplicateDecision(groupId, action) {
+  if (!groupId || !action) {
+    return;
+  }
+  const group = getDuplicateGroupById(groupId);
+  if (!group) {
+    return;
+  }
+  state.duplicateDecisions.set(group.group, action);
+  state.activeDuplicateGroup = null;
+  if (elements.duplicatePanel) {
+    elements.duplicatePanelHint.textContent = group.messages?.[action] || 'Решение применено.';
+    elements.duplicatePanelList.innerHTML = '';
+    elements.duplicatePanelButtons?.forEach((btn) => {
+      btn.disabled = true;
     });
+    elements.duplicatePanel.classList.add('floating-panel--inactive');
+  }
+  renderDuplicateList();
+  updateStartButtonState();
+}
 
-    actionRow.appendChild(actions);
-    details.appendChild(actionRow);
-    elements.duplicateList.appendChild(details);
+function getDuplicateGroupById(groupId) {
+  return state.currentScenario?.duplicateResolutions?.find((group) => group.group === groupId) || null;
+}
+
+function showDuplicateInPanel(group) {
+  if (!group || !elements.duplicatePanel) {
+    return;
+  }
+  elements.duplicatePanel.removeAttribute('hidden');
+  elements.duplicatePanel.classList.remove('floating-panel--inactive');
+  state.activeDuplicateGroup = group.group;
+  elements.duplicatePanelHint.textContent = `Группа ${group.group}. Выберите действие.`;
+  elements.duplicatePanelList.innerHTML = '';
+
+  group.files.forEach((name) => {
+    const original = state.currentScenario.files.find((file) => file.name === name);
+    const fileRow = createFileRow(
+      original || {
+        name,
+        type: 'Отчёт',
+        periodLabel: '—',
+        origin: '—',
+        status: 'duplicate'
+      },
+      { showHint: false }
+    );
+    fileRow.classList.add('floating-panel__row');
+    elements.duplicatePanelList.appendChild(fileRow);
+  });
+
+  elements.duplicatePanelButtons?.forEach((btn) => {
+    btn.disabled = false;
+  });
+
+  highlightActiveDuplicateCard();
+}
+
+function highlightActiveDuplicateCard() {
+  if (!elements.duplicateList) {
+    return;
+  }
+  elements.duplicateList.querySelectorAll('.duplicate-card').forEach((card) => {
+    card.classList.toggle('duplicate-card--active', card.dataset.group === state.activeDuplicateGroup);
   });
 }
 
-function handleDuplicateDecision(group, action) {
-  state.duplicateDecisions.set(group.group, action);
-  const message = document.getElementById(`duplicate-msg-${group.group}`);
-  if (message) {
-    message.textContent = group.messages[action];
+function clearDuplicatePanel(message) {
+  if (!elements.duplicatePanel) {
+    return;
   }
-  const container = message?.parentElement?.querySelector('.file-actions');
-  if (container) {
-    container.querySelectorAll('button').forEach((btn) => {
-      btn.disabled = true;
-      btn.classList.toggle('button-primary', btn.dataset.action === action);
-    });
+  state.activeDuplicateGroup = null;
+  elements.duplicatePanelList.innerHTML = '';
+  elements.duplicatePanelHint.textContent =
+    message || 'Выберите группу отчётов слева, чтобы принять решение.';
+  elements.duplicatePanelButtons?.forEach((btn) => {
+    btn.disabled = true;
+  });
+  elements.duplicatePanel.classList.add('floating-panel--inactive');
+  highlightActiveDuplicateCard();
+}
+
+function hideDuplicatePanel() {
+  if (!elements.duplicatePanel) {
+    return;
   }
-  updateStartButtonState();
+  elements.duplicatePanel.setAttribute('hidden', '');
+  clearDuplicatePanel();
 }
 
 function updateMappingButton() {
   const scenario = state.currentScenario;
   if (!scenario || !scenario.mappingSteps || !scenario.mappingSteps.length) {
-    elements.startMapping.textContent = 'Маппинг не требуется';
+    elements.startMapping.textContent = 'Сверка не требуется';
     elements.startMapping.disabled = true;
     elements.startMapping.setAttribute('aria-disabled', 'true');
   } else if (state.mappingComplete) {
-    elements.startMapping.textContent = 'Мастер пройден';
+    elements.startMapping.textContent = 'Сверка завершена';
     elements.startMapping.disabled = true;
     elements.startMapping.setAttribute('aria-disabled', 'true');
   } else {
-    elements.startMapping.textContent = 'Открыть мастер маппинга';
+    elements.startMapping.textContent = 'Открыть мастер сверки';
     elements.startMapping.disabled = false;
     elements.startMapping.removeAttribute('aria-disabled');
   }
@@ -780,37 +892,43 @@ function openMappingWizard() {
   if (!steps.length) {
     return;
   }
-  let index = 0;
   const backdrop = document.createElement('div');
   backdrop.className = 'modal-backdrop';
+  const fragment = elements.mappingTemplate.content.cloneNode(true);
+  const modal = fragment.querySelector('.modal');
+  const list = modal.querySelector('[data-role="list"]');
+  list.innerHTML = '';
 
-  const showStep = () => {
-    backdrop.innerHTML = '';
-    const fragment = elements.mappingTemplate.content.cloneNode(true);
-    const modal = fragment.querySelector('.modal');
-    const step = steps[index];
-    modal.querySelector('[data-role="title"]').textContent = step.title;
-    modal.querySelector('[data-role="description"]').textContent = step.description;
-    modal.querySelector('[data-role="suggestion"]').textContent = step.suggestion;
-    modal.querySelector('[data-role="cancel"]').addEventListener('click', () => {
-      document.body.removeChild(backdrop);
-    });
-    modal.querySelector('[data-role="confirm"]').addEventListener('click', () => {
-      index += 1;
-      if (index >= steps.length) {
-        state.mappingComplete = true;
-        document.body.removeChild(backdrop);
-        updateMappingButton();
-        updateStartButtonState();
-      } else {
-        showStep();
-      }
-    });
-    backdrop.appendChild(fragment);
-  };
+  steps.forEach((step) => {
+    const item = document.createElement('article');
+    item.className = 'modal-step';
+    const title = document.createElement('h4');
+    title.textContent = step.title;
+    const description = document.createElement('p');
+    description.textContent = step.description;
+    item.appendChild(title);
+    item.appendChild(description);
+    if (step.suggestion) {
+      const suggestion = document.createElement('p');
+      suggestion.className = 'modal-suggestion';
+      suggestion.textContent = step.suggestion;
+      item.appendChild(suggestion);
+    }
+    list.appendChild(item);
+  });
 
+  modal.querySelector('[data-role="cancel"]').addEventListener('click', () => {
+    document.body.removeChild(backdrop);
+  });
+  modal.querySelector('[data-role="confirm"]').addEventListener('click', () => {
+    state.mappingComplete = true;
+    document.body.removeChild(backdrop);
+    updateMappingButton();
+    updateStartButtonState();
+  });
+
+  backdrop.appendChild(fragment);
   document.body.appendChild(backdrop);
-  showStep();
 }
 
 function initializeProgressSteps() {
@@ -830,6 +948,7 @@ function startConsolidation() {
   if (!state.currentScenario) {
     return;
   }
+  hideDuplicatePanel();
   elements.uploadScreen.classList.remove('active');
   elements.progressScreen.classList.add('active');
   state.progressStart = performance.now();
