@@ -68,6 +68,12 @@ function cacheElements() {
   elements.badgeCompanies = document.getElementById('badge-companies');
   elements.badgePeriods = document.getElementById('badge-periods');
   elements.badgeFormats = document.getElementById('badge-formats');
+  elements.tabAttention = document.getElementById('tab-attention');
+  elements.tabDuplicates = document.getElementById('tab-duplicates');
+  elements.tabCatalog = document.getElementById('tab-catalog');
+  elements.panelAttention = document.getElementById('panel-attention');
+  elements.panelDuplicates = document.getElementById('panel-duplicates');
+  elements.panelCatalog = document.getElementById('panel-catalog');
   elements.companyFileList = document.getElementById('companyFileList');
   elements.periodFileList = document.getElementById('periodFileList');
   elements.tabCompanies = document.getElementById('tab-companies');
@@ -76,7 +82,6 @@ function cacheElements() {
   elements.panelPeriods = document.getElementById('panel-periods');
   elements.attentionList = document.getElementById('attentionList');
   elements.duplicateList = document.getElementById('duplicateList');
-  elements.duplicatesSection = document.getElementById('duplicatesSection');
   elements.startMapping = document.getElementById('startMapping');
   elements.startConsolidation = document.getElementById('startConsolidation');
   elements.uploadScreen = document.getElementById('upload-screen');
@@ -214,10 +219,30 @@ function setupEventHandlers() {
     loadScenario(scenario, scenario.summary.files);
   });
 
+  const mainTabs = [elements.tabAttention, elements.tabDuplicates, elements.tabCatalog];
+  const mainTabHandler = createTabKeydownHandler(mainTabs);
+  const groupingTabs = [elements.tabCompanies, elements.tabPeriods];
+  const groupingTabHandler = createTabKeydownHandler(groupingTabs);
+
+  if (elements.tabAttention) {
+    elements.tabAttention.addEventListener('click', () => setActiveMainTab('attention'));
+    elements.tabAttention.addEventListener('keydown', mainTabHandler);
+  }
+  if (elements.tabDuplicates) {
+    elements.tabDuplicates.addEventListener('click', () => setActiveMainTab('duplicates'));
+    elements.tabDuplicates.addEventListener('keydown', mainTabHandler);
+  }
+  if (elements.tabCatalog) {
+    elements.tabCatalog.addEventListener('click', () => setActiveMainTab('catalog'));
+    elements.tabCatalog.addEventListener('keydown', mainTabHandler);
+  }
+
   elements.tabCompanies.addEventListener('click', () => setActiveTab('companies'));
   elements.tabPeriods.addEventListener('click', () => setActiveTab('periods'));
-  [elements.tabCompanies, elements.tabPeriods].forEach((tab) => {
-    tab.addEventListener('keydown', onTabKeydown);
+  groupingTabs.forEach((tab) => {
+    if (tab) {
+      tab.addEventListener('keydown', groupingTabHandler);
+    }
   });
 
   elements.startMapping.addEventListener('click', openMappingWizard);
@@ -316,6 +341,8 @@ function loadScenario(scenario, uploadedCount = 0) {
   renderGroupings();
   renderAttentionList();
   renderDuplicateList();
+  setActiveMainTab('attention');
+  setActiveTab('companies');
   updateMappingButton();
   updateStartButtonState();
   resetScreensToUpload();
@@ -973,17 +1000,25 @@ function updateStartButtonState() {
 }
 
 function showDuplicatePanel() {
-  if (!elements.duplicatesSection) {
+  if (!elements.tabDuplicates) {
     return;
   }
-  elements.duplicatesSection.removeAttribute('hidden');
+  elements.tabDuplicates.disabled = false;
+  elements.tabDuplicates.removeAttribute('aria-disabled');
 }
 
 function hideDuplicatePanel() {
-  if (!elements.duplicatesSection) {
+  if (!elements.tabDuplicates) {
     return;
   }
-  elements.duplicatesSection.setAttribute('hidden', '');
+  elements.tabDuplicates.disabled = true;
+  elements.tabDuplicates.setAttribute('aria-disabled', 'true');
+  if (elements.panelDuplicates) {
+    elements.panelDuplicates.setAttribute('hidden', '');
+  }
+  if (elements.tabDuplicates.getAttribute('aria-selected') === 'true') {
+    setActiveMainTab('attention');
+  }
 }
 
 function resetScreensToUpload() {
@@ -1544,18 +1579,63 @@ function switchTriadPanel(target, button) {
   }
 }
 
-function onTabKeydown(event) {
-  const tabs = [elements.tabCompanies, elements.tabPeriods];
-  const currentIndex = tabs.indexOf(event.target);
-  if (event.key === 'ArrowRight') {
-    const next = tabs[(currentIndex + 1) % tabs.length];
-    next.focus();
-    next.click();
-  } else if (event.key === 'ArrowLeft') {
-    const prev = tabs[(currentIndex - 1 + tabs.length) % tabs.length];
-    prev.focus();
-    prev.click();
+function createTabKeydownHandler(tabs) {
+  return (event) => {
+    const enabledTabs = tabs.filter((tab) => tab && !tab.disabled);
+    if (!enabledTabs.length) {
+      return;
+    }
+    const currentIndex = enabledTabs.indexOf(event.target);
+    if (currentIndex === -1) {
+      return;
+    }
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      const next = enabledTabs[(currentIndex + 1) % enabledTabs.length];
+      next.focus();
+      next.click();
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      const prev = enabledTabs[(currentIndex - 1 + enabledTabs.length) % enabledTabs.length];
+      prev.focus();
+      prev.click();
+    } else if (event.key === 'Home') {
+      const first = enabledTabs[0];
+      first.focus();
+      first.click();
+    } else if (event.key === 'End') {
+      const last = enabledTabs[enabledTabs.length - 1];
+      last.focus();
+      last.click();
+    }
+  };
+}
+
+function setActiveMainTab(tab) {
+  const mapping = {
+    attention: { button: elements.tabAttention, panel: elements.panelAttention },
+    duplicates: { button: elements.tabDuplicates, panel: elements.panelDuplicates },
+    catalog: { button: elements.tabCatalog, panel: elements.panelCatalog }
+  };
+
+  let target = mapping[tab];
+  if (!target || !target.button || target.button.disabled) {
+    target = Object.values(mapping).find((entry) => entry.button && !entry.button.disabled);
   }
+  if (!target || !target.button || !target.panel) {
+    return;
+  }
+
+  Object.values(mapping).forEach((entry) => {
+    if (!entry.button || !entry.panel) {
+      return;
+    }
+    const isActive = entry.button === target.button;
+    entry.button.setAttribute('aria-selected', String(isActive));
+    if (isActive) {
+      entry.panel.removeAttribute('hidden');
+    } else {
+      entry.panel.setAttribute('hidden', '');
+    }
+  });
 }
 
 function setActiveTab(tab) {

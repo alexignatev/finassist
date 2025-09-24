@@ -96,41 +96,86 @@
               <p class="section-subtitle">xlsx • csv • zip</p>
             </article>
           </div>
-          <div class="tablist" role="tablist" aria-label="Группировка файлов">
-            <button role="tab" id="tab-companies" aria-selected="true" aria-controls="panel-companies">
-              По компаниям
-            </button>
-            <button role="tab" id="tab-periods" aria-selected="false" aria-controls="panel-periods">
-              По периодам
-            </button>
-          </div>
-          <div id="panel-companies" role="tabpanel" aria-labelledby="tab-companies">
-          <div class="file-list" id="companyFileList" aria-live="polite"></div>
-          </div>
-          <div id="panel-periods" role="tabpanel" aria-labelledby="tab-periods" hidden>
-            <div class="file-list" id="periodFileList" aria-live="polite"></div>
-          </div>
-          <div class="section-title upload-divider">
-            <div>
-              <h3 class="section-subtitle">Файлы, требующие внимания</h3>
+          <div class="upload-tabs">
+            <div class="tablist" role="tablist" aria-label="Разделы проверки">
+              <button
+                role="tab"
+                id="tab-attention"
+                aria-selected="true"
+                aria-controls="panel-attention"
+              >
+                Файлы, требующие внимания
+              </button>
+              <button
+                role="tab"
+                id="tab-duplicates"
+                aria-selected="false"
+                aria-controls="panel-duplicates"
+              >
+                Дубликаты
+              </button>
+              <button
+                role="tab"
+                id="tab-catalog"
+                aria-selected="false"
+                aria-controls="panel-catalog"
+              >
+                Каталог загрузки
+              </button>
+            </div>
+
+            <div
+              id="panel-attention"
+              class="upload-tabpanel"
+              role="tabpanel"
+              aria-labelledby="tab-attention"
+            >
               <p class="section-subtitle">
                 Подтвердите подсказки системы, чтобы перейти к консолидации. Все предположения уже заполнены.
               </p>
               <p class="section-subtitle subtle-note">Мастер сверки доступен в панели действий ниже.</p>
+              <div class="file-list" id="attentionList" aria-live="polite"></div>
             </div>
-          </div>
-          <div class="file-list" id="attentionList" aria-live="polite"></div>
-          <section id="duplicatesSection" aria-label="Дубликаты">
-            <div class="section-title upload-divider">
-              <div>
-                <h3 class="section-subtitle">Дубликаты</h3>
-                <p class="section-subtitle">
-                  Выберите действие прямо на карточке компании: оставить старый файл, оставить новый или склеить данные.
-                </p>
+
+            <div
+              id="panel-duplicates"
+              class="upload-tabpanel"
+              role="tabpanel"
+              aria-labelledby="tab-duplicates"
+              hidden
+            >
+              <p class="section-subtitle">
+                Выберите действие прямо на карточке компании: оставить старый файл, оставить новый или объединить данные.
+              </p>
+              <div class="file-list" id="duplicateList" aria-live="polite"></div>
+            </div>
+
+            <div
+              id="panel-catalog"
+              class="upload-tabpanel"
+              role="tabpanel"
+              aria-labelledby="tab-catalog"
+              hidden
+            >
+              <p class="section-subtitle">
+                Сгруппируйте загруженные файлы по компаниям или по периодам, чтобы увидеть полную картину.
+              </p>
+              <div class="tablist" role="tablist" aria-label="Группировка файлов">
+                <button role="tab" id="tab-companies" aria-selected="true" aria-controls="panel-companies">
+                  По компаниям
+                </button>
+                <button role="tab" id="tab-periods" aria-selected="false" aria-controls="panel-periods">
+                  По периодам
+                </button>
+              </div>
+              <div id="panel-companies" role="tabpanel" aria-labelledby="tab-companies">
+                <div class="file-list" id="companyFileList" aria-live="polite"></div>
+              </div>
+              <div id="panel-periods" role="tabpanel" aria-labelledby="tab-periods" hidden>
+                <div class="file-list" id="periodFileList" aria-live="polite"></div>
               </div>
             </div>
-            <div class="file-list" id="duplicateList" aria-live="polite"></div>
-          </section>
+          </div>
           <div class="upload-actions" role="complementary" hidden>
             <div class="upload-actions__info">
               <h3 class="section-subtitle">Панель действий</h3>
