@@ -4,7 +4,6 @@ const state = {
   currentScenario: null,
   mappingComplete: false,
   duplicateDecisions: new Map(),
-  activeDuplicateGroup: null,
   flaggedReceivables: new Set(),
   threshold: null,
   inventoryFilters: new Set(),
@@ -15,7 +14,8 @@ const state = {
   progressDuration: 0,
   progressFrame: null,
   lastUploadCount: 0,
-  virtualRenderTokens: {}
+  virtualRenderTokens: {},
+  showAdjustedMetrics: true
 };
 
 const elements = {};
@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', init);
 async function init() {
   cacheElements();
   initializeTheme();
+  setUploadActionsVisibility(false);
   setDemoScenarioAvailability(false);
   const resources = await loadResources();
   if (!resources) {
@@ -61,6 +62,7 @@ function cacheElements() {
   elements.summaryPeriods = document.getElementById('summary-periods');
   elements.summaryFormats = document.getElementById('summary-formats');
   elements.summaryDescription = document.getElementById('summary-description');
+  elements.summaryPeriodsDetail = document.getElementById('summary-periods-detail');
   elements.recognitionLegend = document.getElementById('recognition-legend');
   elements.badgeFiles = document.getElementById('badge-files');
   elements.badgeCompanies = document.getElementById('badge-companies');
@@ -74,11 +76,6 @@ function cacheElements() {
   elements.panelPeriods = document.getElementById('panel-periods');
   elements.attentionList = document.getElementById('attentionList');
   elements.duplicateList = document.getElementById('duplicateList');
-  elements.duplicatePanel = document.getElementById('duplicateActionPanel');
-  elements.duplicatePanelList = document.getElementById('duplicateActionList');
-  elements.duplicatePanelHint = document.getElementById('duplicatePanelHint');
-  elements.closeDuplicatePanel = document.getElementById('closeDuplicatePanel');
-  elements.duplicatePanelButtons = document.querySelectorAll('#duplicateActionPanel [data-action]');
   elements.startMapping = document.getElementById('startMapping');
   elements.startConsolidation = document.getElementById('startConsolidation');
   elements.uploadScreen = document.getElementById('upload-screen');
@@ -90,7 +87,7 @@ function cacheElements() {
   elements.progressStatus = document.getElementById('progressStatus');
   elements.triadNavButtons = document.querySelectorAll('.triad-nav-btn');
   elements.consolidationMetrics = document.getElementById('consolidationMetrics');
-  elements.toggleElimination = document.getElementById('toggleElimination');
+  elements.toggleAdjustments = document.getElementById('toggleAdjustments');
   elements.showEliminations = document.getElementById('showEliminations');
   elements.eliminationDetails = document.getElementById('eliminationDetails');
   elements.consolidationHints = document.getElementById('consolidationHints');
@@ -116,6 +113,7 @@ function cacheElements() {
   elements.finalDisclaimer = document.getElementById('finalDisclaimer');
   elements.ctaButton = document.getElementById('ctaButton');
   elements.mappingTemplate = document.getElementById('mappingStepTemplate');
+  elements.uploadActions = document.querySelector('.upload-actions');
 }
 
 function initializeTheme() {
@@ -224,24 +222,13 @@ function setupEventHandlers() {
   elements.startMapping.addEventListener('click', openMappingWizard);
   elements.startConsolidation.addEventListener('click', startConsolidation);
 
-  if (elements.closeDuplicatePanel) {
-    elements.closeDuplicatePanel.addEventListener('click', hideDuplicatePanel);
-  }
-
-  elements.duplicatePanelButtons?.forEach((button) => {
-    button.addEventListener('click', () => {
-      if (!state.activeDuplicateGroup) {
-        return;
-      }
-      handleDuplicateDecision(state.activeDuplicateGroup, button.dataset.action);
-    });
-  });
-
   elements.triadNavButtons.forEach((button) => {
     button.addEventListener('click', () => switchTriadPanel(button.dataset.target, button));
   });
 
-  elements.toggleElimination.addEventListener('change', renderConsolidationMetrics);
+  if (elements.toggleAdjustments) {
+    elements.toggleAdjustments.addEventListener('click', toggleAdjustmentMode);
+  }
   elements.showEliminations.addEventListener('click', toggleEliminationList);
 
   elements.thresholdRange.min = state.config.receivables.minDays;
@@ -308,8 +295,7 @@ function loadScenario(scenario, uploadedCount = 0) {
   state.currentScenario = scenario;
   state.mappingComplete = scenario.mappingSteps?.length === 0;
   state.duplicateDecisions = new Map();
-  state.activeDuplicateGroup = null;
-  hideDuplicatePanel();
+  state.showAdjustedMetrics = true;
   state.flaggedReceivables.clear();
   state.inventoryFilters.clear();
   state.liquidationCleaned = false;
@@ -318,6 +304,7 @@ function loadScenario(scenario, uploadedCount = 0) {
   elements.thresholdValue.textContent = state.threshold;
   state.lastUploadCount = uploadedCount;
   elements.trafficMessage.textContent = '';
+  setUploadActionsVisibility(true);
 
   elements.inventoryFilters.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
     checkbox.checked = false;
@@ -334,7 +321,7 @@ function loadScenario(scenario, uploadedCount = 0) {
     btn.setAttribute('aria-pressed', idx === 0 ? 'true' : 'false');
   });
   elements.eliminationDetails.setAttribute('hidden', '');
-  elements.showEliminations.textContent = 'Показать устранённые внутригрупповые обороты';
+  elements.showEliminations.textContent = 'Показать снятые внутригрупповые обороты';
   elements.showEliminations.setAttribute('aria-expanded', 'false');
   resetLiquidationView();
   state.trafficFilter = 'all';
@@ -350,6 +337,17 @@ function loadScenario(scenario, uploadedCount = 0) {
   renderTrafficList();
 }
 
+function setUploadActionsVisibility(visible) {
+  if (!elements.uploadActions) {
+    return;
+  }
+  if (visible) {
+    elements.uploadActions.removeAttribute('hidden');
+  } else {
+    elements.uploadActions.setAttribute('hidden', '');
+  }
+}
+
 function renderScenarioSummary() {
   const scenario = state.currentScenario;
   elements.summaryFiles.textContent = scenario.summary.files;
@@ -358,6 +356,22 @@ function renderScenarioSummary() {
   elements.summaryFormats.textContent = scenario.summary.formats.join(' • ');
   const uploadInfo = state.lastUploadCount ? `Загружено: ${state.lastUploadCount}` : 'Готовый демо-набор';
   elements.summaryDescription.textContent = `${uploadInfo}. Сценарий: ${scenario.summary.description}.`;
+  const periodLabels = Array.from(
+    new Set(
+      scenario.files
+        .map((file) => file.periodLabel || file.period)
+        .filter((value) => Boolean(value))
+    )
+  );
+  if (periodLabels.length) {
+    const preview = periodLabels.slice(0, 3).join(' • ');
+    const remainder = periodLabels.length > 3 ? ` и ещё ${periodLabels.length - 3}` : '';
+    elements.summaryPeriodsDetail.textContent = `${preview}${remainder}`;
+    elements.badgePeriods.setAttribute('title', periodLabels.join(', '));
+  } else {
+    elements.summaryPeriodsDetail.textContent = 'Периоды появятся после загрузки';
+    elements.badgePeriods.removeAttribute('title');
+  }
   elements.recognitionLegend.textContent = `Распознано: ${scenario.recognition.recognized} • Требует сверки: ${scenario.recognition.needsMapping} • Дубликаты: ${scenario.recognition.duplicates}`;
   elements.badgeFiles.textContent = `Файлов: ${scenario.summary.files}`;
   elements.badgeCompanies.textContent = `Компаний: ${scenario.summary.companies}`;
@@ -432,6 +446,9 @@ function renderCompanyGroups(files) {
     const summary = document.createElement('summary');
     summary.textContent = `${company} • ${companyFiles.length} файлов`;
     details.appendChild(summary);
+    const body = document.createElement('div');
+    body.className = 'file-group__body';
+    details.appendChild(body);
     elements.companyFileList.appendChild(details);
 
     let fileIndex = 0;
@@ -447,7 +464,7 @@ function renderCompanyGroups(files) {
         fileIndex += 1;
         batchCount += 1;
       }
-      details.appendChild(fragment);
+      body.appendChild(fragment);
       if (fileIndex < companyFiles.length) {
         requestAnimationFrame(renderFileBatch);
       } else {
@@ -513,12 +530,13 @@ function renderPeriodGroups(files) {
     const summary = document.createElement('summary');
     summary.textContent = `${year} • ${totalFiles} файлов`;
     details.appendChild(summary);
+    const body = document.createElement('div');
+    body.className = 'file-group__body period-grid';
+    details.appendChild(body);
     elements.periodFileList.appendChild(details);
 
     const periods = Array.from(periodMap.entries());
     let periodIndex = 0;
-    let periodFileIndex = 0;
-    let headerRendered = false;
 
     const renderPeriodBatch = () => {
       if (token.cancelled) {
@@ -528,30 +546,30 @@ function renderPeriodGroups(files) {
       let batchCount = 0;
       while (periodIndex < periods.length && batchCount < FILE_BATCH_SIZE) {
         const [periodLabel, periodFiles] = periods[periodIndex];
-        if (!headerRendered) {
-          const header = document.createElement('div');
-          header.className = 'file-row period-label';
-          const titleSpan = document.createElement('span');
-          titleSpan.textContent = periodLabel;
-          header.appendChild(titleSpan);
-          fragment.appendChild(header);
-          headerRendered = true;
-          batchCount += 1;
-          continue;
-        }
-
-        if (periodFileIndex < periodFiles.length) {
-          fragment.appendChild(createFileRow(periodFiles[periodFileIndex]));
-          periodFileIndex += 1;
-          batchCount += 1;
-        } else {
-          periodIndex += 1;
-          periodFileIndex = 0;
-          headerRendered = false;
-        }
+        const card = document.createElement('article');
+        card.className = 'period-card';
+        const header = document.createElement('div');
+        header.className = 'period-card__header';
+        const title = document.createElement('h4');
+        title.textContent = periodLabel;
+        const count = document.createElement('span');
+        count.className = 'section-subtitle';
+        count.textContent = `${periodFiles.length} файлов`;
+        header.appendChild(title);
+        header.appendChild(count);
+        card.appendChild(header);
+        const list = document.createElement('div');
+        list.className = 'period-card__list';
+        periodFiles.forEach((file) => {
+          list.appendChild(createFileRow(file, { compact: true }));
+        });
+        card.appendChild(list);
+        fragment.appendChild(card);
+        periodIndex += 1;
+        batchCount += 1;
       }
 
-      details.appendChild(fragment);
+      body.appendChild(fragment);
 
       if (periodIndex < periods.length) {
         requestAnimationFrame(renderPeriodBatch);
@@ -570,6 +588,9 @@ function renderPeriodGroups(files) {
 function createFileRow(file, options = {}) {
   const row = document.createElement('div');
   row.className = 'file-row';
+  if (options.compact) {
+    row.classList.add('file-row--compact');
+  }
   const name = document.createElement('span');
   name.textContent = file.name;
   row.appendChild(name);
@@ -641,84 +662,112 @@ function renderAttentionList() {
 function renderDuplicateList() {
   const scenario = state.currentScenario;
   elements.duplicateList.innerHTML = '';
+  if (!scenario) {
+    return;
+  }
   const groups = scenario.duplicateResolutions || [];
   if (!groups.length) {
     const message = document.createElement('p');
     message.className = 'section-subtitle';
     message.textContent = 'Дубликатов не найдено.';
     elements.duplicateList.appendChild(message);
-    hideDuplicatePanel();
     return;
   }
 
   const unresolved = groups.filter((group) => !state.duplicateDecisions.has(group.group));
+  const resolved = groups.filter((group) => state.duplicateDecisions.has(group.group));
 
-  if (!unresolved.length) {
-    const message = document.createElement('p');
-    message.className = 'section-subtitle';
-    message.textContent = 'Все дубликаты разобраны.';
-    elements.duplicateList.appendChild(message);
-    if (elements.duplicatePanel) {
-      clearDuplicatePanel('Все дубликаты обработаны.');
-      elements.duplicatePanel.setAttribute('hidden', '');
-    }
-    return;
+  if (unresolved.length) {
+    const title = document.createElement('h4');
+    title.className = 'duplicate-section-title';
+    title.textContent = 'Нужно решить';
+    elements.duplicateList.appendChild(title);
+    unresolved.forEach((group) => {
+      elements.duplicateList.appendChild(createDuplicateCard(group, false));
+    });
   }
 
-  unresolved.forEach((group) => {
-    const card = document.createElement('article');
-    card.className = 'duplicate-card';
-    card.dataset.group = group.group;
-
-    const header = document.createElement('div');
-    header.className = 'duplicate-card__header';
+  if (resolved.length) {
     const title = document.createElement('h4');
-    title.textContent = group.group;
-    const count = document.createElement('span');
-    count.className = 'section-subtitle';
-    count.textContent = `Файлов в группе: ${group.files.length}`;
-    header.appendChild(title);
-    header.appendChild(count);
-    card.appendChild(header);
-
-    const preview = document.createElement('ul');
-    preview.className = 'duplicate-card__list';
-    group.files.slice(0, 3).forEach((name) => {
-      const original = state.currentScenario.files.find((file) => file.name === name);
-      const item = document.createElement('li');
-      item.textContent = original
-        ? `${original.name} • ${original.periodLabel || original.period || '—'}`
-        : name;
-      preview.appendChild(item);
+    title.className = 'duplicate-section-title';
+    title.textContent = 'Решения приняты';
+    elements.duplicateList.appendChild(title);
+    resolved.forEach((group) => {
+      elements.duplicateList.appendChild(createDuplicateCard(group, true));
     });
-    if (group.files.length > 3) {
-      const more = document.createElement('li');
-      more.className = 'duplicate-card__more';
-      more.textContent = `…и ещё ${group.files.length - 3}`;
-      preview.appendChild(more);
+  }
+}
+
+function createDuplicateCard(group, resolved) {
+  const card = document.createElement('article');
+  card.className = 'duplicate-card';
+  if (resolved) {
+    card.classList.add('duplicate-card--resolved');
+  }
+
+  const header = document.createElement('div');
+  header.className = 'duplicate-card__header';
+  const title = document.createElement('h4');
+  title.textContent = group.group;
+  const count = document.createElement('span');
+  count.className = 'section-subtitle';
+  count.textContent = `${group.files.length} файлов`;
+  header.appendChild(title);
+  header.appendChild(count);
+  card.appendChild(header);
+
+  const preview = document.createElement('ul');
+  preview.className = 'duplicate-card__list';
+  group.files.slice(0, 3).forEach((name) => {
+    const original = state.currentScenario.files.find((file) => file.name === name);
+    const item = document.createElement('li');
+    item.textContent = original
+      ? `${original.name} • ${original.periodLabel || original.period || '—'}`
+      : name;
+    preview.appendChild(item);
+  });
+  if (group.files.length > 3) {
+    const more = document.createElement('li');
+    more.className = 'duplicate-card__more';
+    more.textContent = `…и ещё ${group.files.length - 3}`;
+    preview.appendChild(more);
+  }
+  card.appendChild(preview);
+
+  const actions = document.createElement('div');
+  actions.className = 'duplicate-card__actions';
+  const currentDecision = state.duplicateDecisions.get(group.group);
+  const buttons = [
+    { action: 'keepOld', label: 'Оставить старый' },
+    { action: 'keepNew', label: 'Оставить новый' },
+    { action: 'merge', label: 'Склеить' }
+  ];
+
+  buttons.forEach((buttonConfig) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'button-secondary duplicate-card__button';
+    const isActive = currentDecision === buttonConfig.action;
+    if (isActive) {
+      btn.classList.add('duplicate-card__button--active');
     }
-    card.appendChild(preview);
-
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'button-ghost duplicate-card__action';
-    button.textContent = 'Рассмотреть';
-    button.addEventListener('click', () => showDuplicateInPanel(group));
-    card.appendChild(button);
-
-    if (state.activeDuplicateGroup === group.group) {
-      card.classList.add('duplicate-card--active');
-    }
-
-    elements.duplicateList.appendChild(card);
+    btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    btn.textContent = buttonConfig.label;
+    btn.addEventListener('click', () => handleDuplicateDecision(group.group, buttonConfig.action));
+    actions.appendChild(btn);
   });
 
-  if (elements.duplicatePanel) {
-    elements.duplicatePanel.removeAttribute('hidden');
-    if (!unresolved.some((group) => group.group === state.activeDuplicateGroup)) {
-      clearDuplicatePanel();
-    }
+  card.appendChild(actions);
+
+  const messageText = currentDecision ? group.messages?.[currentDecision] : '';
+  if (messageText) {
+    const note = document.createElement('p');
+    note.className = 'duplicate-card__note';
+    note.textContent = messageText;
+    card.appendChild(note);
   }
+
+  return card;
 }
 
 function handleDuplicateDecision(groupId, action) {
@@ -730,86 +779,12 @@ function handleDuplicateDecision(groupId, action) {
     return;
   }
   state.duplicateDecisions.set(group.group, action);
-  state.activeDuplicateGroup = null;
-  if (elements.duplicatePanel) {
-    elements.duplicatePanelHint.textContent = group.messages?.[action] || 'Решение применено.';
-    elements.duplicatePanelList.innerHTML = '';
-    elements.duplicatePanelButtons?.forEach((btn) => {
-      btn.disabled = true;
-    });
-    elements.duplicatePanel.classList.add('floating-panel--inactive');
-  }
   renderDuplicateList();
   updateStartButtonState();
 }
 
 function getDuplicateGroupById(groupId) {
   return state.currentScenario?.duplicateResolutions?.find((group) => group.group === groupId) || null;
-}
-
-function showDuplicateInPanel(group) {
-  if (!group || !elements.duplicatePanel) {
-    return;
-  }
-  elements.duplicatePanel.removeAttribute('hidden');
-  elements.duplicatePanel.classList.remove('floating-panel--inactive');
-  state.activeDuplicateGroup = group.group;
-  elements.duplicatePanelHint.textContent = `Группа ${group.group}. Выберите действие.`;
-  elements.duplicatePanelList.innerHTML = '';
-
-  group.files.forEach((name) => {
-    const original = state.currentScenario.files.find((file) => file.name === name);
-    const fileRow = createFileRow(
-      original || {
-        name,
-        type: 'Отчёт',
-        periodLabel: '—',
-        origin: '—',
-        status: 'duplicate'
-      },
-      { showHint: false }
-    );
-    fileRow.classList.add('floating-panel__row');
-    elements.duplicatePanelList.appendChild(fileRow);
-  });
-
-  elements.duplicatePanelButtons?.forEach((btn) => {
-    btn.disabled = false;
-  });
-
-  highlightActiveDuplicateCard();
-}
-
-function highlightActiveDuplicateCard() {
-  if (!elements.duplicateList) {
-    return;
-  }
-  elements.duplicateList.querySelectorAll('.duplicate-card').forEach((card) => {
-    card.classList.toggle('duplicate-card--active', card.dataset.group === state.activeDuplicateGroup);
-  });
-}
-
-function clearDuplicatePanel(message) {
-  if (!elements.duplicatePanel) {
-    return;
-  }
-  state.activeDuplicateGroup = null;
-  elements.duplicatePanelList.innerHTML = '';
-  elements.duplicatePanelHint.textContent =
-    message || 'Выберите группу отчётов слева, чтобы принять решение.';
-  elements.duplicatePanelButtons?.forEach((btn) => {
-    btn.disabled = true;
-  });
-  elements.duplicatePanel.classList.add('floating-panel--inactive');
-  highlightActiveDuplicateCard();
-}
-
-function hideDuplicatePanel() {
-  if (!elements.duplicatePanel) {
-    return;
-  }
-  elements.duplicatePanel.setAttribute('hidden', '');
-  clearDuplicatePanel();
 }
 
 function updateMappingButton() {
@@ -885,6 +860,10 @@ function displayResourceLoadError() {
   elements.summaryCompanies.textContent = '0';
   elements.summaryPeriods.textContent = '0';
   elements.summaryFormats.textContent = '—';
+  if (elements.summaryPeriodsDetail) {
+    elements.summaryPeriodsDetail.textContent = 'Периоды появятся после загрузки';
+  }
+  setUploadActionsVisibility(false);
 }
 
 function openMappingWizard() {
@@ -1004,7 +983,8 @@ function renderConsolidationMetrics() {
   if (!totals) {
     return;
   }
-  const useAfter = elements.toggleElimination.checked;
+  const useAfter = Boolean(state.showAdjustedMetrics);
+  updateAdjustmentToggle();
   const selected = useAfter ? totals.after : totals.before;
   const base = state.data.consolidation.baseSummary;
   elements.consolidationMetrics.innerHTML = '';
@@ -1014,7 +994,7 @@ function renderConsolidationMetrics() {
   summaryCard.innerHTML = `
     <span class="metric-value">${base.companies}</span>
     <span>Компаний в консолидированной базе</span>
-    <p class="metric-note">Файлов учтено: ${base.files}. Период: ${base.period}. Элиминаций: ${base.eliminatedPairs}.</p>
+    <p class="metric-note">Файлов учтено: ${base.files}. Период: ${base.period}. Удалено пар: ${base.eliminatedPairs}.</p>
   `;
   elements.consolidationMetrics.appendChild(summaryCard);
 
@@ -1028,6 +1008,9 @@ function renderConsolidationMetrics() {
 
   metrics.forEach((metric) => {
     if (selected[metric.key] === undefined) {
+      return;
+    }
+    if (useAfter && Number(selected[metric.key]) === 0) {
       return;
     }
     const card = document.createElement('div');
@@ -1045,7 +1028,7 @@ function renderConsolidationMetrics() {
     intraCard.innerHTML = `
       <span>Внутригрупповая выручка</span>
       <span class="metric-value">${formatCurrency(totals.before.intraRevenue)}</span>
-      <p class="metric-note">До элиминации остаётся в отчётности.</p>
+      <p class="metric-note">До исключения обороты остаются в отчётности.</p>
     `;
     elements.consolidationMetrics.appendChild(intraCard);
   }
@@ -1056,6 +1039,22 @@ function renderConsolidationMetrics() {
     note.textContent = selected.note;
     elements.consolidationMetrics.appendChild(note);
   }
+}
+
+function toggleAdjustmentMode() {
+  state.showAdjustedMetrics = !state.showAdjustedMetrics;
+  renderConsolidationMetrics();
+}
+
+function updateAdjustmentToggle() {
+  if (!elements.toggleAdjustments) {
+    return;
+  }
+  const pressed = Boolean(state.showAdjustedMetrics);
+  elements.toggleAdjustments.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+  elements.toggleAdjustments.textContent = pressed
+    ? 'Показать до исключений'
+    : 'Показать после исключений';
 }
 
 function renderEliminationDetails() {
@@ -1095,12 +1094,12 @@ function toggleEliminationList() {
       renderEliminationDetails();
     }
     elements.eliminationDetails.removeAttribute('hidden');
-    elements.showEliminations.textContent = 'Скрыть устранённые обороты';
+    elements.showEliminations.textContent = 'Скрыть снятые обороты';
     elements.showEliminations.setAttribute('aria-expanded', 'true');
     elements.eliminationDetails.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   } else {
     elements.eliminationDetails.setAttribute('hidden', '');
-    elements.showEliminations.textContent = 'Показать устранённые внутригрупповые обороты';
+    elements.showEliminations.textContent = 'Показать снятые внутригрупповые обороты';
     elements.showEliminations.setAttribute('aria-expanded', 'false');
   }
 }

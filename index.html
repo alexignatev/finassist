@@ -88,7 +88,7 @@
             <article class="summary-card">
               <strong id="summary-periods">0</strong>
               <span>Периодов</span>
-              <p class="section-subtitle">Показываем, где не хватает данных</p>
+              <p id="summary-periods-detail" class="section-subtitle">Периоды появятся после загрузки</p>
             </article>
             <article class="summary-card">
               <strong id="summary-formats">—</strong>
@@ -105,12 +105,12 @@
             </button>
           </div>
           <div id="panel-companies" role="tabpanel" aria-labelledby="tab-companies">
-            <div class="file-list" id="companyFileList" aria-live="polite"></div>
+          <div class="file-list" id="companyFileList" aria-live="polite"></div>
           </div>
           <div id="panel-periods" role="tabpanel" aria-labelledby="tab-periods" hidden>
             <div class="file-list" id="periodFileList" aria-live="polite"></div>
           </div>
-          <div class="section-title">
+          <div class="section-title upload-divider">
             <div>
               <h3 class="section-subtitle">Файлы, требующие внимания</h3>
               <p class="section-subtitle">
@@ -120,16 +120,16 @@
             </div>
           </div>
           <div class="file-list" id="attentionList" aria-live="polite"></div>
-          <div class="section-title">
+          <div class="section-title upload-divider">
             <div>
               <h3 class="section-subtitle">Дубликаты</h3>
               <p class="section-subtitle">
-                Выберите группу файлов и завершите решение в плавающей панели справа: оставить старый, оставить новый или склеить.
+                Выберите действие прямо на карточке компании: оставить старый файл, оставить новый или склеить данные.
               </p>
             </div>
           </div>
           <div class="file-list" id="duplicateList" aria-live="polite"></div>
-          <div class="upload-actions" role="complementary">
+          <div class="upload-actions" role="complementary" hidden>
             <div class="upload-actions__info">
               <h3 class="section-subtitle">Панель действий</h3>
               <p class="section-subtitle">Переходите к сверке и запускайте консолидацию из одного места.</p>
@@ -174,7 +174,7 @@
               Консолидация
             </button>
             <button type="button" class="triad-nav-btn" data-target="detectors" aria-pressed="false">
-              Детекторы
+              Сигнальные отчёты
             </button>
             <button type="button" class="triad-nav-btn" data-target="liquidation" aria-pressed="false">
               Ликвидационный баланс
@@ -190,10 +190,14 @@
             <div id="panel-consolidation" class="triad-panel" role="region" aria-labelledby="triad-title">
               <div class="metrics-grid" id="consolidationMetrics"></div>
               <div class="elimination-controls">
-                <label class="toggle">
-                  <input type="checkbox" id="toggleElimination" checked />
-                  <span>Показать элиминации внутригрупповых оборотов</span>
-                </label>
+                <button
+                  id="toggleAdjustments"
+                  class="button-secondary"
+                  type="button"
+                  aria-pressed="true"
+                >
+                  Показать до исключений
+                </button>
                 <button
                   id="showEliminations"
                   class="button-secondary elimination-button"
@@ -201,7 +205,7 @@
                   aria-expanded="false"
                   aria-controls="eliminationDetails"
                 >
-                  Показать устранённые внутригрупповые обороты
+                  Показать снятые внутригрупповые обороты
                 </button>
               </div>
               <div id="eliminationDetails" class="elimination-list" hidden></div>
@@ -212,7 +216,7 @@
               <div class="detectors-grid">
                 <div class="detector-panel" aria-labelledby="receivable-title">
                   <div>
-                    <h3 id="receivable-title">Неработающая задолженность</h3>
+                    <h3 id="receivable-title">Просроченная задолженность</h3>
                     <p class="section-subtitle">
                       Управляйте порогом по дням. Всё, что выше порога, подсвечивается и может быть отправлено в светофор.
                     </p>
@@ -285,21 +289,6 @@
       </main>
     </div>
     <a id="ctaButton" class="cta-floating" href="#" target="_blank" rel="noopener">Записаться на тест-драйв</a>
-    <div id="duplicateActionPanel" class="floating-panel" hidden aria-live="polite">
-      <div class="floating-panel__header">
-        <h3>Решение по дубликатам</h3>
-        <button type="button" class="button-ghost" id="closeDuplicatePanel" aria-label="Свернуть панель">×</button>
-      </div>
-      <p class="section-subtitle" id="duplicatePanelHint">
-        Выберите группу отчётов слева, чтобы принять решение.
-      </p>
-      <div id="duplicateActionList" class="floating-panel__list"></div>
-      <div class="floating-panel__actions">
-        <button type="button" class="button-secondary" data-action="keepOld">Оставить старый</button>
-        <button type="button" class="button-secondary" data-action="keepNew">Оставить новый</button>
-        <button type="button" class="button-primary" data-action="merge">Склеить</button>
-      </div>
-    </div>
     <template id="mappingStepTemplate">
       <div class="modal" role="dialog" aria-modal="true" aria-live="polite">
         <h3>Сверка данных перед консолидацией</h3>
