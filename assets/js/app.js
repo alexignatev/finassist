@@ -249,6 +249,7 @@ function loadScenario(scenario, uploadedCount = 0) {
   });
   elements.eliminationDetails.setAttribute('hidden', '');
   elements.showEliminations.textContent = 'Показать устранённые внутригрупповые обороты';
+  elements.showEliminations.setAttribute('aria-expanded', 'false');
   resetLiquidationView();
   state.trafficFilter = 'all';
   state.trafficCompany = 'all';
@@ -906,11 +907,17 @@ function renderHintsAndRules() {
 function toggleEliminationList() {
   const hidden = elements.eliminationDetails.hasAttribute('hidden');
   if (hidden) {
+    if (!elements.eliminationDetails.childElementCount) {
+      renderEliminationDetails();
+    }
     elements.eliminationDetails.removeAttribute('hidden');
     elements.showEliminations.textContent = 'Скрыть устранённые обороты';
+    elements.showEliminations.setAttribute('aria-expanded', 'true');
+    elements.eliminationDetails.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   } else {
     elements.eliminationDetails.setAttribute('hidden', '');
     elements.showEliminations.textContent = 'Показать устранённые внутригрупповые обороты';
+    elements.showEliminations.setAttribute('aria-expanded', 'false');
   }
 }
 

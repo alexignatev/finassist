@@ -3,18 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Интерактивная триада Solward — демонстрационный прототип</title>
+    <title>Solward — интерактивный прототип</title>
     <link rel="stylesheet" href="assets/css/styles.css" />
   </head>
   <body>
     <a class="visually-hidden" href="#main-content">Перейти к содержимому</a>
     <div class="app">
       <header>
-        <h1>Интерактивная триада: консолидация → ликвидационный баланс → светофор</h1>
-        <p>
-          Прототип демонстрирует процесс: мультизагрузка файлов, нормализация и итоговые отчёты.
-          Интерфейс показывает проблемные зоны фактически, без лозунгов.
-        </p>
+        <h1>Solward</h1>
+        <p>Интерактивный прототип: загрузка группы файлов, консолидация и триада отчётов.</p>
         <div class="summary-badges" role="status" aria-live="polite">
           <span class="badge" id="badge-files">Файлов: 0</span>
           <span class="badge" id="badge-companies">Компаний: 0</span>
@@ -178,7 +175,13 @@
                 <input type="checkbox" id="toggleElimination" checked />
                 <span>Показать элиминации внутригрупповых оборотов</span>
               </label>
-              <button id="showEliminations" class="button-secondary" type="button">
+              <button
+                id="showEliminations"
+                class="button-secondary"
+                type="button"
+                aria-expanded="false"
+                aria-controls="eliminationDetails"
+              >
                 Показать устранённые внутригрупповые обороты
               </button>
               <div id="eliminationDetails" class="elimination-list" hidden></div>
