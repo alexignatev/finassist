@@ -355,6 +355,10 @@ main {
   gap: 20px;
 }
 
+.file-list > * {
+  align-self: start;
+}
+
 .upload-divider {
   margin-top: 32px;
 }
@@ -581,10 +585,16 @@ main {
 
 .file-card[open] {
   box-shadow: 0 18px 36px rgba(15, 23, 42, 0.28);
+  grid-column: 1 / -1;
 }
 
 .file-card[open] .file-card__summary {
   background: var(--surface-card);
+}
+
+.file-card[open] .file-card__body {
+  width: min(100%, 960px);
+  margin: 0 auto;
 }
 
 
