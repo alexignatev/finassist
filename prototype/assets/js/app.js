@@ -24,17 +24,15 @@ document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
   cacheElements();
-  try {
-    const [config, data] = await Promise.all([
-      fetchJSON('../config.json'),
-      fetchJSON('assets/data/mockData.json')
-    ]);
-    state.config = config;
-    state.data = data;
-  } catch (error) {
-    console.error('Не удалось загрузить конфигурацию или данные', error);
+  setDemoScenarioAvailability(false);
+  const resources = await loadResources();
+  if (!resources) {
+    displayResourceLoadError();
     return;
   }
+
+  state.config = resources.config;
+  state.data = resources.data;
 
   setupEventHandlers();
   initializeProgressSteps();
@@ -44,6 +42,8 @@ async function init() {
   renderFinalScreen();
   updateCTA();
   renderTrafficList();
+
+  setDemoScenarioAvailability(true);
 }
 
 function cacheElements() {
@@ -107,6 +107,18 @@ function cacheElements() {
   elements.mappingTemplate = document.getElementById('mappingStepTemplate');
 }
 
+function setDemoScenarioAvailability(enabled) {
+  if (!elements.demoScenario) {
+    return;
+  }
+  elements.demoScenario.disabled = !enabled;
+  if (enabled) {
+    elements.demoScenario.removeAttribute('aria-disabled');
+  } else {
+    elements.demoScenario.setAttribute('aria-disabled', 'true');
+  }
+}
+
 function setupEventHandlers() {
   elements.dropZone.addEventListener('dragover', onDragOver);
   elements.dropZone.addEventListener('dragleave', onDragLeave);
@@ -123,6 +135,9 @@ function setupEventHandlers() {
   });
 
   elements.demoScenario.addEventListener('click', () => {
+    if (!state.data?.uploadScenarios?.length) {
+      return;
+    }
     const scenario = state.data.uploadScenarios[1] || state.data.uploadScenarios[0];
     loadScenario(scenario, scenario.summary.files);
   });
@@ -528,6 +543,36 @@ async function fetchJSON(path) {
     throw new Error(`Не удалось загрузить ${path}`);
   }
   return response.json();
+}
+
+async function loadResources() {
+  try {
+    const [config, data] = await Promise.all([
+      fetchJSON('../config.json'),
+      fetchJSON('assets/data/mockData.json')
+    ]);
+    return { config, data };
+  } catch (error) {
+    if (window.__FINASSIST_OFFLINE__?.config && window.__FINASSIST_OFFLINE__?.data) {
+      console.warn('Используем встроенные офлайн-данные', error);
+      return {
+        config: window.__FINASSIST_OFFLINE__.config,
+        data: window.__FINASSIST_OFFLINE__.data
+      };
+    }
+    console.error('Не удалось загрузить конфигурацию или данные', error);
+    return null;
+  }
+}
+
+function displayResourceLoadError() {
+  const message = 'Не удалось загрузить демо-данные. Откройте прототип через статический сервер или обновите страницу.';
+  elements.summaryDescription.textContent = message;
+  elements.recognitionLegend.textContent = 'Демо-набор недоступен.';
+  elements.summaryFiles.textContent = '0';
+  elements.summaryCompanies.textContent = '0';
+  elements.summaryPeriods.textContent = '0';
+  elements.summaryFormats.textContent = '—';
 }
 
 function openMappingWizard() {

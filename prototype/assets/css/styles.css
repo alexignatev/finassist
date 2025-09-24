@@ -178,6 +178,14 @@ main {
   background: rgba(148, 163, 184, 0.3);
 }
 
+.button-primary:disabled,
+.button-secondary:disabled,
+.button-ghost:disabled,
+.drop-zone button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .button-ghost {
   background: transparent;
   color: var(--accent);
