@@ -21,11 +21,13 @@ const elements = {};
 
 const numberFormatter = new Intl.NumberFormat('ru-RU');
 const FILE_BATCH_SIZE = 16;
+const THEME_STORAGE_KEY = 'solward-theme';
 
 document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
   cacheElements();
+  initializeTheme();
   setDemoScenarioAvailability(false);
   const resources = await loadResources();
   if (!resources) {
@@ -52,6 +54,7 @@ function cacheElements() {
   elements.dropZone = document.getElementById('dropZone');
   elements.fileInput = document.getElementById('fileInput');
   elements.demoScenario = document.getElementById('demoScenario');
+  elements.themeToggle = document.getElementById('themeToggle');
   elements.summaryFiles = document.getElementById('summary-files');
   elements.summaryCompanies = document.getElementById('summary-companies');
   elements.summaryPeriods = document.getElementById('summary-periods');
@@ -109,6 +112,64 @@ function cacheElements() {
   elements.mappingTemplate = document.getElementById('mappingStepTemplate');
 }
 
+function initializeTheme() {
+  const storedTheme = getStoredTheme();
+  const prefersLight =
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(prefers-color-scheme: light)').matches
+      : false;
+  const theme = storedTheme || (prefersLight ? 'light' : 'dark');
+  applyTheme(theme);
+}
+
+function getStoredTheme() {
+  try {
+    return localStorage.getItem(THEME_STORAGE_KEY);
+  } catch (error) {
+    return null;
+  }
+}
+
+function persistTheme(theme) {
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  } catch (error) {
+    // ignore storage errors
+  }
+}
+
+function applyTheme(theme) {
+  const nextTheme = theme === 'light' ? 'light' : 'dark';
+  document.body.dataset.theme = nextTheme;
+  updateThemeToggle(nextTheme);
+  persistTheme(nextTheme);
+}
+
+function toggleTheme() {
+  const currentTheme = document.body.dataset.theme === 'light' ? 'light' : 'dark';
+  const nextTheme = currentTheme === 'light' ? 'dark' : 'light';
+  applyTheme(nextTheme);
+}
+
+function updateThemeToggle(theme) {
+  if (!elements.themeToggle) {
+    return;
+  }
+  const isLight = theme === 'light';
+  elements.themeToggle.setAttribute('aria-pressed', String(isLight));
+  const actionLabel = isLight ? 'Переключить на тёмную тему' : 'Переключить на светлую тему';
+  elements.themeToggle.setAttribute('aria-label', actionLabel);
+  elements.themeToggle.setAttribute('title', actionLabel);
+  const icon = elements.themeToggle.querySelector('.theme-toggle__icon');
+  const label = elements.themeToggle.querySelector('.theme-toggle__label');
+  if (icon) {
+    icon.textContent = isLight ? '🌞' : '🌙';
+  }
+  if (label) {
+    label.textContent = isLight ? 'Тёмная тема' : 'Светлая тема';
+  }
+}
+
 function setDemoScenarioAvailability(enabled) {
   if (!elements.demoScenario) {
     return;
@@ -135,6 +196,10 @@ function setupEventHandlers() {
   elements.fileInput.addEventListener('change', (event) => {
     handleFiles(event.target.files);
   });
+
+  if (elements.themeToggle) {
+    elements.themeToggle.addEventListener('click', toggleTheme);
+  }
 
   elements.demoScenario.addEventListener('click', () => {
     if (!state.data?.uploadScenarios?.length) {
@@ -1012,15 +1077,15 @@ function renderInventoryList() {
     amount.textContent = formatCurrency(item.amount);
     row.appendChild(amount);
     const source = document.createElement('span');
-   source.textContent = item.source;
-   row.appendChild(source);
-   const flags = document.createElement('div');
-   flags.className = 'inventory-flags';
-   item.issues.forEach((issue) => {
-     const badge = document.createElement('span');
-     badge.textContent = issue;
-     flags.appendChild(badge);
-   });
+    source.textContent = item.source;
+    row.appendChild(source);
+    const flags = document.createElement('div');
+    flags.className = 'inventory-flags';
+    item.issues.forEach((issue) => {
+      const badge = document.createElement('span');
+      badge.textContent = issue;
+      flags.appendChild(badge);
+    });
     flags.style.gridColumn = '1 / -1';
     row.appendChild(flags);
 
@@ -1035,8 +1100,10 @@ function renderInventoryList() {
 }
 
 function highlightInventoryRow(row, issues) {
-  const severity = issues.includes('брак') || issues.includes('истёк срок') ? 'highlight-red' : 'highlight-yellow';
-  row.querySelectorAll('span').forEach((span) => span.classList.add(severity));
+  const isCritical = issues.includes('брак') || issues.includes('истёк срок');
+  const severityClass = isCritical ? 'highlight-red' : 'highlight-yellow';
+  row.classList.add(isCritical ? 'inventory-row--critical' : 'inventory-row--warning');
+  row.querySelectorAll('span').forEach((span) => span.classList.add(severityClass));
 }
 
 function resetLiquidationView() {

@@ -10,8 +10,21 @@
     <a class="visually-hidden" href="#main-content">Перейти к содержимому</a>
     <div class="app">
       <header>
-        <h1>Solward</h1>
-        <p>Интерактивный прототип: загрузка группы файлов, консолидация и триада отчётов.</p>
+        <div class="header-top">
+          <div class="header-text">
+            <h1>Solward</h1>
+            <p>Интерактивный прототип: загрузка группы файлов, консолидация и триада отчётов.</p>
+          </div>
+          <button
+            id="themeToggle"
+            class="button-ghost theme-toggle"
+            type="button"
+            aria-pressed="false"
+          >
+            <span class="theme-toggle__icon" aria-hidden="true"></span>
+            <span class="theme-toggle__label">Светлая тема</span>
+          </button>
+        </div>
         <div class="summary-badges" role="status" aria-live="polite">
           <span class="badge" id="badge-files">Файлов: 0</span>
           <span class="badge" id="badge-companies">Компаний: 0</span>
@@ -103,10 +116,8 @@
               <p class="section-subtitle">
                 Подтвердите подсказки системы, чтобы перейти к консолидации. Все предположения уже заполнены.
               </p>
+              <p class="section-subtitle subtle-note">Мастер маппинга доступен в панели действий ниже.</p>
             </div>
-            <button id="startMapping" type="button" class="button-secondary" disabled>
-              Открыть мастер маппинга
-            </button>
           </div>
           <div class="file-list" id="attentionList" aria-live="polite"></div>
           <div class="section-title">
@@ -116,14 +127,19 @@
             </div>
           </div>
           <div class="file-list" id="duplicateList" aria-live="polite"></div>
-          <div class="section-title">
-            <div>
-              <h3 class="section-subtitle">Готово к старту</h3>
-              <p class="section-subtitle">После подтверждения начнётся имитация консолидации и проверок.</p>
+          <div class="upload-actions" role="complementary">
+            <div class="upload-actions__info">
+              <h3 class="section-subtitle">Панель действий</h3>
+              <p class="section-subtitle">Переходите к маппингу и запускайте консолидацию из одного места.</p>
             </div>
-            <button id="startConsolidation" class="button-primary" type="button" disabled>
-              Начать консолидацию
-            </button>
+            <div class="upload-actions__buttons">
+              <button id="startMapping" type="button" class="button-secondary" disabled>
+                Открыть мастер маппинга
+              </button>
+              <button id="startConsolidation" class="button-primary" type="button" disabled>
+                Начать консолидацию
+              </button>
+            </div>
           </div>
         </section>
 
