@@ -376,6 +376,8 @@ main {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
   color: var(--text-color);
   background: var(--surface-highlight);
 }
@@ -392,6 +394,15 @@ main {
   display: grid;
   gap: 16px;
   padding: 18px 22px 22px;
+}
+
+.file-group[open] {
+  grid-column: 1 / -1;
+}
+
+.file-group[open] .file-group__body:not(.period-grid) {
+  width: min(100%, 1040px);
+  margin: 0 auto;
 }
 
 .file-group:not([open]) .file-group__body {
@@ -484,6 +495,7 @@ main {
 .file-row span {
   font-size: 14px;
   line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .file-row--compact {
