@@ -588,52 +588,155 @@ function renderPeriodGroups(files) {
 }
 
 function createFileRow(file, options = {}) {
-  const row = document.createElement('div');
-  row.className = 'file-row';
   if (options.compact) {
-    row.classList.add('file-row--compact');
+    const row = document.createElement('div');
+    row.className = 'file-row file-row--compact';
+
+    const name = document.createElement('span');
+    name.textContent = file.name;
+    row.appendChild(name);
+
+    const type = document.createElement('span');
+    type.className = 'file-tag file-tag--type';
+    type.textContent = file.format ? `${file.type} (${file.format})` : file.type;
+    row.appendChild(type);
+
+    const period = document.createElement('span');
+    period.className = 'file-tag file-tag--period';
+    period.textContent = file.periodLabel || file.period || '—';
+    row.appendChild(period);
+
+    const origin = document.createElement('span');
+    origin.className = 'file-tag file-tag--origin';
+    origin.textContent = file.origin || '—';
+    row.appendChild(origin);
+
+    const status = document.createElement('span');
+    status.className = 'file-status';
+    status.dataset.status = file.status || 'recognized';
+    status.textContent = statusLabel(file.status);
+    row.appendChild(status);
+
+    if (file.mappingHint && options.showHint !== false) {
+      const hint = document.createElement('span');
+      hint.textContent = file.mappingHint;
+      hint.className = 'section-subtitle';
+      hint.style.gridColumn = '1 / -1';
+      row.appendChild(hint);
+    }
+
+    if (options.actions) {
+      const actionsContainer = document.createElement('div');
+      actionsContainer.className = 'file-actions';
+      actionsContainer.style.gridColumn = '1 / -1';
+      options.actions.forEach((actionButton) => {
+        actionsContainer.appendChild(actionButton);
+      });
+      row.appendChild(actionsContainer);
+    }
+
+    return row;
   }
-  const name = document.createElement('span');
-  name.textContent = file.name;
-  row.appendChild(name);
 
-  const type = document.createElement('span');
-  type.textContent = file.format ? `${file.type} (${file.format})` : file.type;
-  row.appendChild(type);
+  const hasExpandableContent = Boolean(
+    (file.mappingHint && options.showHint !== false) || options.actions
+  );
 
-  const period = document.createElement('span');
-  period.textContent = file.periodLabel || file.period || '—';
-  row.appendChild(period);
-
-  const origin = document.createElement('span');
-  origin.textContent = file.origin || '—';
-  row.appendChild(origin);
-
-  const status = document.createElement('span');
-  status.className = 'file-status';
-  status.dataset.status = file.status || 'recognized';
-  status.textContent = statusLabel(file.status);
-  row.appendChild(status);
-
-  if (file.mappingHint && options.showHint !== false) {
-    const hint = document.createElement('span');
-    hint.textContent = file.mappingHint;
-    hint.className = 'section-subtitle';
-    hint.style.gridColumn = '1 / -1';
-    row.appendChild(hint);
+  const container = document.createElement(hasExpandableContent ? 'details' : 'article');
+  container.className = 'file-card';
+  if (hasExpandableContent) {
+    container.classList.add('file-card--expandable');
   }
 
-  if (options.actions) {
-    const actionsContainer = document.createElement('div');
-    actionsContainer.className = 'file-actions';
-    actionsContainer.style.gridColumn = '1 / -1';
-    options.actions.forEach((actionButton) => {
-      actionsContainer.appendChild(actionButton);
-    });
-    row.appendChild(actionsContainer);
+  const buildSummary = (summaryElement) => {
+    summaryElement.className = 'file-card__summary';
+    if (!hasExpandableContent) {
+      summaryElement.classList.add('file-card__summary--static');
+    }
+
+    const top = document.createElement('div');
+    top.className = 'file-card__top';
+
+    const title = document.createElement('span');
+    title.className = 'file-card__name';
+    title.textContent = file.name;
+    top.appendChild(title);
+
+    const status = document.createElement('span');
+    status.className = 'file-status';
+    status.dataset.status = file.status || 'recognized';
+    status.textContent = statusLabel(file.status);
+    top.appendChild(status);
+
+    if (hasExpandableContent) {
+      top.classList.add('file-card__top--expandable');
+      const caret = document.createElement('span');
+      caret.className = 'file-card__caret';
+      caret.setAttribute('aria-hidden', 'true');
+      top.appendChild(caret);
+    }
+
+    summaryElement.appendChild(top);
+
+    const tagList = document.createElement('div');
+    tagList.className = 'file-card__tags';
+
+    const type = document.createElement('span');
+    type.className = 'file-tag file-tag--type';
+    type.textContent = file.format ? `${file.type} (${file.format})` : file.type;
+    tagList.appendChild(type);
+
+    const period = document.createElement('span');
+    period.className = 'file-tag file-tag--period';
+    period.textContent = file.periodLabel || file.period || '—';
+    tagList.appendChild(period);
+
+    const origin = document.createElement('span');
+    origin.className = 'file-tag file-tag--origin';
+    origin.textContent = file.origin || '—';
+    tagList.appendChild(origin);
+
+    summaryElement.appendChild(tagList);
+
+    return summaryElement;
+  };
+
+  if (hasExpandableContent) {
+    const summary = document.createElement('summary');
+    buildSummary(summary);
+    container.appendChild(summary);
+  } else {
+    const summary = document.createElement('div');
+    buildSummary(summary);
+    container.appendChild(summary);
   }
 
-  return row;
+  if (hasExpandableContent) {
+    const body = document.createElement('div');
+    body.className = 'file-card__body';
+
+    if (file.mappingHint && options.showHint !== false) {
+      const hint = document.createElement('p');
+      hint.className = 'file-card__hint section-subtitle';
+      hint.textContent = file.mappingHint;
+      body.appendChild(hint);
+    }
+
+    if (options.actions) {
+      const actionsContainer = document.createElement('div');
+      actionsContainer.className = 'file-actions';
+      options.actions.forEach((actionButton) => {
+        actionsContainer.appendChild(actionButton);
+      });
+      body.appendChild(actionsContainer);
+    }
+
+    if (body.children.length) {
+      container.appendChild(body);
+    }
+  }
+
+  return container;
 }
 
 function statusLabel(status = 'recognized') {
