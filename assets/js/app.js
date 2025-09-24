@@ -76,6 +76,7 @@ function cacheElements() {
   elements.panelPeriods = document.getElementById('panel-periods');
   elements.attentionList = document.getElementById('attentionList');
   elements.duplicateList = document.getElementById('duplicateList');
+  elements.duplicatesSection = document.getElementById('duplicatesSection');
   elements.startMapping = document.getElementById('startMapping');
   elements.startConsolidation = document.getElementById('startConsolidation');
   elements.uploadScreen = document.getElementById('upload-screen');
@@ -305,6 +306,7 @@ function loadScenario(scenario, uploadedCount = 0) {
   state.lastUploadCount = uploadedCount;
   elements.trafficMessage.textContent = '';
   setUploadActionsVisibility(true);
+  showDuplicatePanel();
 
   elements.inventoryFilters.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
     checkbox.checked = false;
@@ -810,6 +812,20 @@ function updateStartButtonState() {
   const duplicatesResolved = duplicates.every((group) => state.duplicateDecisions.has(group.group)) || !duplicates.length;
   const ready = scenarioReady && state.mappingComplete && duplicatesResolved;
   elements.startConsolidation.disabled = !ready;
+}
+
+function showDuplicatePanel() {
+  if (!elements.duplicatesSection) {
+    return;
+  }
+  elements.duplicatesSection.removeAttribute('hidden');
+}
+
+function hideDuplicatePanel() {
+  if (!elements.duplicatesSection) {
+    return;
+  }
+  elements.duplicatesSection.setAttribute('hidden', '');
 }
 
 function resetScreensToUpload() {
