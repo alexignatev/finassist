@@ -815,6 +815,14 @@ main {
   margin: 0 0 16px;
   color: var(--muted);
   font-size: 14px;
+  grid-column: 1 / -1;
+}
+
+.duplicate-summary__note {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--accent);
 }
 
 .duplicate-card__header {
@@ -871,6 +879,11 @@ main {
   background: var(--accent-soft);
   border-color: rgba(56, 189, 248, 0.6);
   color: var(--text-color);
+}
+
+.duplicate-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
 }
 
 .duplicate-card__note {
@@ -1354,6 +1367,50 @@ main {
   padding: 16px;
   display: grid;
   gap: 8px;
+}
+
+.modal-options {
+  display: grid;
+  gap: 12px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.modal-option {
+  background: var(--surface-muted);
+  border: 1px solid var(--border-color-soft);
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text-color);
+  transition: transform var(--transition), border-color var(--transition), background var(--transition);
+}
+
+.modal-option:hover,
+.modal-option:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  background: rgba(56, 189, 248, 0.16);
+  transform: translateY(-2px);
+}
+
+.modal-option__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.modal-option__description {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.modal-option--manual {
+  border-style: dashed;
 }
 
 .modal-step h4 {

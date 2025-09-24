@@ -4,6 +4,7 @@ const state = {
   currentScenario: null,
   mappingComplete: false,
   duplicateDecisions: new Map(),
+  lastDuplicateBulkAction: null,
   flaggedReceivables: new Set(),
   threshold: null,
   inventoryFilters: new Set(),
@@ -27,6 +28,29 @@ const DUPLICATE_ACTIONS = [
   { action: 'keepOld', label: 'Оставить старый', status: 'Выбран старый файл' },
   { action: 'keepNew', label: 'Оставить новый', status: 'Выбран новый файл' },
   { action: 'merge', label: 'Склеить', status: 'Файлы будут объединены' }
+];
+
+const DUPLICATE_BULK_OPTIONS = [
+  {
+    action: 'keepNew',
+    label: 'Использовать новые файлы',
+    description: 'Заменить предыдущие выгрузки последними версиями и продолжить консолидацию.'
+  },
+  {
+    action: 'keepOld',
+    label: 'Использовать старые файлы',
+    description: 'Сохранить исходные данные и исключить загруженные дубликаты из обработки.'
+  },
+  {
+    action: 'merge',
+    label: 'Объединить дубликаты',
+    description: 'Склеить совпадающие строки и сформировать единый набор данных по каждой компании.'
+  },
+  {
+    action: 'manual',
+    label: 'Просмотреть все файлы вручную',
+    description: 'Перейти к вкладке «Дубликаты» и принять решения по каждой группе самостоятельно.'
+  }
 ];
 
 document.addEventListener('DOMContentLoaded', init);
@@ -124,6 +148,7 @@ function cacheElements() {
   elements.finalDisclaimer = document.getElementById('finalDisclaimer');
   elements.ctaButton = document.getElementById('ctaButton');
   elements.mappingTemplate = document.getElementById('mappingStepTemplate');
+  elements.duplicateBulkTemplate = document.getElementById('duplicateBulkTemplate');
   elements.uploadActions = document.querySelector('.upload-actions');
 }
 
@@ -326,6 +351,7 @@ function loadScenario(scenario, uploadedCount = 0) {
   state.currentScenario = scenario;
   state.mappingComplete = scenario.mappingSteps?.length === 0;
   state.duplicateDecisions = new Map();
+  state.lastDuplicateBulkAction = null;
   state.showAdjustedMetrics = true;
   state.flaggedReceivables.clear();
   state.inventoryFilters.clear();
@@ -870,6 +896,15 @@ function renderDuplicateList() {
   const summary = document.createElement('p');
   summary.className = 'section-subtitle duplicate-summary';
   summary.textContent = `Решено: ${resolvedCount} из ${groups.length}`;
+  if (state.lastDuplicateBulkAction && state.lastDuplicateBulkAction !== 'manual') {
+    const note = document.createElement('span');
+    note.className = 'duplicate-summary__note';
+    const optionLabel = getDuplicateBulkLabel(state.lastDuplicateBulkAction);
+    if (optionLabel) {
+      note.textContent = `Массовое решение: ${optionLabel}`;
+      summary.appendChild(note);
+    }
+  }
   elements.duplicateList.appendChild(summary);
 
   groups.forEach((group) => {
@@ -884,6 +919,7 @@ function createDuplicateCard(group, resolved) {
   if (resolved) {
     card.classList.add('duplicate-card--resolved');
   }
+  card.setAttribute('aria-label', `Дубликаты: ${group.group}`);
 
   const header = document.createElement('div');
   header.className = 'duplicate-card__header';
@@ -959,6 +995,7 @@ function handleDuplicateDecision(groupId, action) {
   if (!group) {
     return;
   }
+  state.lastDuplicateBulkAction = null;
   state.duplicateDecisions.set(group.group, action);
   renderDuplicateList();
   updateStartButtonState();
@@ -993,6 +1030,129 @@ function updateStartButtonState() {
   const duplicatesResolved = duplicates.every((group) => state.duplicateDecisions.has(group.group)) || !duplicates.length;
   const ready = scenarioReady && state.mappingComplete && duplicatesResolved;
   elements.startConsolidation.disabled = !ready;
+}
+
+function openDuplicateBulkModal() {
+  if (!elements.duplicateBulkTemplate) {
+    return;
+  }
+
+  const groups = state.currentScenario?.duplicateResolutions || [];
+  if (!groups.length) {
+    focusFirstDuplicateCard();
+    return;
+  }
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  const fragment = elements.duplicateBulkTemplate.content.cloneNode(true);
+  const modal = fragment.querySelector('.modal');
+  const optionsContainer = modal.querySelector('[data-role="options"]');
+  const closeButton = modal.querySelector('[data-role="close"]');
+
+  const closeModal = () => {
+    document.body.removeChild(backdrop);
+    document.removeEventListener('keydown', handleKeyDown);
+    if (elements.tabDuplicates) {
+      elements.tabDuplicates.focus();
+    }
+  };
+
+  const handleKeyDown = (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeModal();
+    }
+  };
+
+  DUPLICATE_BULK_OPTIONS.forEach((option) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'modal-option';
+    if (option.action === 'manual') {
+      button.classList.add('modal-option--manual');
+    }
+    const title = document.createElement('span');
+    title.className = 'modal-option__title';
+    title.textContent = option.label;
+    const description = document.createElement('span');
+    description.className = 'modal-option__description';
+    description.textContent = option.description;
+    button.appendChild(title);
+    button.appendChild(description);
+    button.addEventListener('click', () => {
+      if (option.action === 'manual') {
+        state.lastDuplicateBulkAction = null;
+        renderDuplicateList();
+        closeModal();
+        requestAnimationFrame(() => {
+          focusFirstDuplicateCard();
+        });
+        return;
+      }
+      applyBulkDuplicateDecision(option.action);
+      closeModal();
+    });
+    optionsContainer.appendChild(button);
+  });
+
+  closeButton.addEventListener('click', closeModal);
+  backdrop.addEventListener('click', (event) => {
+    if (event.target === backdrop) {
+      closeModal();
+    }
+  });
+  modal.addEventListener('click', (event) => {
+    event.stopPropagation();
+  });
+  document.addEventListener('keydown', handleKeyDown);
+
+  backdrop.appendChild(fragment);
+  document.body.appendChild(backdrop);
+  const firstOption = optionsContainer.querySelector('button');
+  if (firstOption) {
+    firstOption.focus();
+  }
+}
+
+function applyBulkDuplicateDecision(action) {
+  const groups = state.currentScenario?.duplicateResolutions || [];
+  state.duplicateDecisions = new Map();
+  groups.forEach((group) => {
+    state.duplicateDecisions.set(group.group, action);
+  });
+  state.lastDuplicateBulkAction = action;
+  renderDuplicateList();
+  updateStartButtonState();
+}
+
+function getDuplicateBulkLabel(action) {
+  const option = DUPLICATE_BULK_OPTIONS.find((item) => item.action === action);
+  return option?.label || '';
+}
+
+function focusFirstDuplicateCard() {
+  if (!elements.duplicateList) {
+    return;
+  }
+  const firstCard = elements.duplicateList.querySelector('.duplicate-card');
+  if (!firstCard) {
+    return;
+  }
+  firstCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  firstCard.setAttribute('tabindex', '-1');
+  try {
+    firstCard.focus({ preventScroll: true });
+  } catch (error) {
+    firstCard.focus();
+  }
+  firstCard.addEventListener(
+    'blur',
+    () => {
+      firstCard.removeAttribute('tabindex');
+    },
+    { once: true }
+  );
 }
 
 function showDuplicatePanel() {
@@ -1079,10 +1239,21 @@ function handleMappingButtonClick() {
     openMappingWizard();
     return;
   }
+  const duplicates = state.currentScenario?.duplicateResolutions || [];
+  if (!duplicates.length) {
+    setActiveMainTab('duplicates');
+    if (elements.tabDuplicates) {
+      elements.tabDuplicates.focus();
+    }
+    focusFirstDuplicateCard();
+    return;
+  }
+
   setActiveMainTab('duplicates');
   if (elements.tabDuplicates) {
     elements.tabDuplicates.focus();
   }
+  openDuplicateBulkModal();
 }
 
 function openMappingWizard() {
