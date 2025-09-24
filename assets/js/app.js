@@ -23,6 +23,11 @@ const elements = {};
 const numberFormatter = new Intl.NumberFormat('ru-RU');
 const FILE_BATCH_SIZE = 16;
 const THEME_STORAGE_KEY = 'solward-theme';
+const DUPLICATE_ACTIONS = [
+  { action: 'keepOld', label: 'Оставить старый', status: 'Выбран старый файл' },
+  { action: 'keepNew', label: 'Оставить новый', status: 'Выбран новый файл' },
+  { action: 'merge', label: 'Склеить', status: 'Файлы будут объединены' }
+];
 
 document.addEventListener('DOMContentLoaded', init);
 
@@ -245,7 +250,7 @@ function setupEventHandlers() {
     }
   });
 
-  elements.startMapping.addEventListener('click', openMappingWizard);
+  elements.startMapping.addEventListener('click', handleMappingButtonClick);
   elements.startConsolidation.addEventListener('click', startConsolidation);
 
   elements.triadNavButtons.forEach((button) => {
@@ -861,28 +866,16 @@ function renderDuplicateList() {
     return;
   }
 
-  const unresolved = groups.filter((group) => !state.duplicateDecisions.has(group.group));
-  const resolved = groups.filter((group) => state.duplicateDecisions.has(group.group));
+  const resolvedCount = groups.filter((group) => state.duplicateDecisions.has(group.group)).length;
+  const summary = document.createElement('p');
+  summary.className = 'section-subtitle duplicate-summary';
+  summary.textContent = `Решено: ${resolvedCount} из ${groups.length}`;
+  elements.duplicateList.appendChild(summary);
 
-  if (unresolved.length) {
-    const title = document.createElement('h4');
-    title.className = 'duplicate-section-title';
-    title.textContent = 'Нужно решить';
-    elements.duplicateList.appendChild(title);
-    unresolved.forEach((group) => {
-      elements.duplicateList.appendChild(createDuplicateCard(group, false));
-    });
-  }
-
-  if (resolved.length) {
-    const title = document.createElement('h4');
-    title.className = 'duplicate-section-title';
-    title.textContent = 'Решения приняты';
-    elements.duplicateList.appendChild(title);
-    resolved.forEach((group) => {
-      elements.duplicateList.appendChild(createDuplicateCard(group, true));
-    });
-  }
+  groups.forEach((group) => {
+    const resolved = state.duplicateDecisions.has(group.group);
+    elements.duplicateList.appendChild(createDuplicateCard(group, resolved));
+  });
 }
 
 function createDuplicateCard(group, resolved) {
@@ -901,6 +894,14 @@ function createDuplicateCard(group, resolved) {
   count.textContent = `${group.files.length} файлов`;
   header.appendChild(title);
   header.appendChild(count);
+  const currentDecision = state.duplicateDecisions.get(group.group);
+  if (currentDecision) {
+    const status = document.createElement('span');
+    status.className = 'duplicate-card__status';
+    const actionConfig = DUPLICATE_ACTIONS.find((item) => item.action === currentDecision);
+    status.textContent = actionConfig ? actionConfig.status : 'Решение сохранено';
+    header.appendChild(status);
+  }
   card.appendChild(header);
 
   const preview = document.createElement('ul');
@@ -923,14 +924,7 @@ function createDuplicateCard(group, resolved) {
 
   const actions = document.createElement('div');
   actions.className = 'duplicate-card__actions';
-  const currentDecision = state.duplicateDecisions.get(group.group);
-  const buttons = [
-    { action: 'keepOld', label: 'Оставить старый' },
-    { action: 'keepNew', label: 'Оставить новый' },
-    { action: 'merge', label: 'Склеить' }
-  ];
-
-  buttons.forEach((buttonConfig) => {
+  DUPLICATE_ACTIONS.forEach((buttonConfig) => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'button-secondary duplicate-card__button';
@@ -980,14 +974,16 @@ function updateMappingButton() {
     elements.startMapping.textContent = 'Сверка не требуется';
     elements.startMapping.disabled = true;
     elements.startMapping.setAttribute('aria-disabled', 'true');
-  } else if (state.mappingComplete) {
-    elements.startMapping.textContent = 'Сверка завершена';
-    elements.startMapping.disabled = true;
-    elements.startMapping.setAttribute('aria-disabled', 'true');
   } else {
-    elements.startMapping.textContent = 'Открыть мастер сверки';
-    elements.startMapping.disabled = false;
-    elements.startMapping.removeAttribute('aria-disabled');
+    if (state.mappingComplete) {
+      elements.startMapping.textContent = 'Проверить дубликаты';
+      elements.startMapping.disabled = false;
+      elements.startMapping.removeAttribute('aria-disabled');
+    } else {
+      elements.startMapping.textContent = 'Открыть мастер сверки';
+      elements.startMapping.disabled = false;
+      elements.startMapping.removeAttribute('aria-disabled');
+    }
   }
 }
 
@@ -1073,6 +1069,20 @@ function displayResourceLoadError() {
     elements.summaryPeriodsDetail.textContent = 'Периоды появятся после загрузки';
   }
   setUploadActionsVisibility(false);
+}
+
+function handleMappingButtonClick() {
+  if (!state.currentScenario) {
+    return;
+  }
+  if (!state.mappingComplete) {
+    openMappingWizard();
+    return;
+  }
+  setActiveMainTab('duplicates');
+  if (elements.tabDuplicates) {
+    elements.tabDuplicates.focus();
+  }
 }
 
 function openMappingWizard() {

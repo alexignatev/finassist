@@ -811,11 +811,34 @@ main {
   box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.25), 0 16px 34px rgba(15, 23, 42, 0.18);
 }
 
+.duplicate-summary {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
 .duplicate-card__header {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   gap: 12px;
+  flex-wrap: wrap;
+}
+
+.duplicate-card__status {
+  margin-left: auto;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-contrast);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.duplicate-card--resolved .duplicate-card__status {
+  background: rgba(74, 222, 128, 0.16);
+  color: var(--success);
 }
 
 .duplicate-card__list {
