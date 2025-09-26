@@ -260,8 +260,32 @@
               <aside class="info-hints" id="consolidationRules"></aside>
             </div>
             <div id="panel-detectors" class="triad-panel" role="region" hidden>
-              <div class="detectors-grid">
-                <div class="detector-panel" aria-labelledby="receivable-title">
+              <nav class="detector-tabs" aria-label="Вкладки сигнальных отчётов">
+                <button
+                  type="button"
+                  class="detector-tab-btn"
+                  data-detector="receivables"
+                  aria-controls="detector-receivables"
+                  aria-pressed="true"
+                >
+                  Просроченная задолженность
+                </button>
+                <button
+                  type="button"
+                  class="detector-tab-btn"
+                  data-detector="inventory"
+                  aria-controls="detector-inventory"
+                  aria-pressed="false"
+                >
+                  Запасы и неликвид
+                </button>
+              </nav>
+              <div class="detector-panels">
+                <section
+                  id="detector-receivables"
+                  class="detector-panel"
+                  aria-labelledby="receivable-title"
+                >
                   <div>
                     <h3 id="receivable-title">Просроченная задолженность</h3>
                     <p class="section-subtitle">
@@ -278,8 +302,13 @@
                     Отправить в светофор
                   </button>
                   <p class="section-subtitle" id="trafficMessage" aria-live="polite"></p>
-                </div>
-                <div class="detector-panel" aria-labelledby="inventory-title">
+                </section>
+                <section
+                  id="detector-inventory"
+                  class="detector-panel"
+                  aria-labelledby="inventory-title"
+                  hidden
+                >
                   <div>
                     <h3 id="inventory-title">Запасы и неликвид</h3>
                     <p class="section-subtitle">
@@ -288,7 +317,7 @@
                   </div>
                   <div id="inventoryFilters"></div>
                   <div id="inventoryList"></div>
-                </div>
+                </section>
               </div>
             </div>
             <div id="panel-liquidation" class="triad-panel" role="region" hidden>

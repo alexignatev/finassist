@@ -16,7 +16,8 @@ const state = {
   progressFrame: null,
   lastUploadCount: 0,
   virtualRenderTokens: {},
-  showAdjustedMetrics: true
+  showAdjustedMetrics: true,
+  activeDetector: 'receivables'
 };
 
 const elements = {};
@@ -134,6 +135,9 @@ function cacheElements() {
   elements.trafficMessage = document.getElementById('trafficMessage');
   elements.inventoryFilters = document.getElementById('inventoryFilters');
   elements.inventoryList = document.getElementById('inventoryList');
+  elements.detectorTabButtons = Array.from(document.querySelectorAll('.detector-tab-btn'));
+  elements.detectorReceivables = document.getElementById('detector-receivables');
+  elements.detectorInventory = document.getElementById('detector-inventory');
   elements.cleanBalance = document.getElementById('cleanBalance');
   elements.liquidationBeforeSummary = document.getElementById('liquidationBeforeSummary');
   elements.liquidationAssets = document.getElementById('liquidationAssets');
@@ -253,6 +257,8 @@ function setupEventHandlers() {
   const mainTabHandler = createTabKeydownHandler(mainTabs);
   const groupingTabs = [elements.tabCompanies, elements.tabPeriods];
   const groupingTabHandler = createTabKeydownHandler(groupingTabs);
+  const detectorTabs = elements.detectorTabButtons || [];
+  const detectorTabHandler = createTabKeydownHandler(detectorTabs);
 
   if (elements.tabAttention) {
     elements.tabAttention.addEventListener('click', () => setActiveMainTab('attention'));
@@ -273,6 +279,14 @@ function setupEventHandlers() {
     if (tab) {
       tab.addEventListener('keydown', groupingTabHandler);
     }
+  });
+
+  detectorTabs.forEach((button) => {
+    if (!button) {
+      return;
+    }
+    button.addEventListener('click', () => switchDetectorPanel(button.dataset.detector, button));
+    button.addEventListener('keydown', detectorTabHandler);
   });
 
   elements.startMapping.addEventListener('click', handleMappingButtonClick);
@@ -357,6 +371,7 @@ function loadScenario(scenario, uploadedCount = 0) {
   state.inventoryFilters.clear();
   state.liquidationCleaned = false;
   state.threshold = state.config.receivables.defaultThreshold;
+  state.activeDetector = 'receivables';
   elements.thresholdRange.value = state.threshold;
   elements.thresholdValue.textContent = state.threshold;
   state.lastUploadCount = uploadedCount;
@@ -1410,6 +1425,7 @@ function completeProgress() {
   renderHintsAndRules();
   renderReceivables();
   renderInventoryList();
+  switchDetectorPanel(state.activeDetector);
   renderLiquidation();
   renderTrafficList();
   switchTriadPanel('consolidation');
@@ -1788,6 +1804,41 @@ function renderTrafficList() {
     message.className = 'section-subtitle';
     message.textContent = 'Нет контрагентов по выбранному фильтру.';
     elements.trafficList.appendChild(message);
+  }
+}
+
+function switchDetectorPanel(target, button) {
+  const nextTarget = target === 'inventory' ? 'inventory' : 'receivables';
+  state.activeDetector = nextTarget;
+
+  const sections = [
+    { key: 'receivables', element: elements.detectorReceivables },
+    { key: 'inventory', element: elements.detectorInventory }
+  ];
+
+  sections.forEach((section) => {
+    if (!section.element) {
+      return;
+    }
+    if (section.key === nextTarget) {
+      section.element.removeAttribute('hidden');
+    } else {
+      section.element.setAttribute('hidden', '');
+    }
+  });
+
+  if (Array.isArray(elements.detectorTabButtons)) {
+    elements.detectorTabButtons.forEach((btn) => {
+      if (!btn) {
+        return;
+      }
+      const isActive = btn.dataset.detector === nextTarget;
+      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+  }
+
+  if (button) {
+    button.focus();
   }
 }
 
