@@ -25,7 +25,7 @@
             <span class="theme-toggle__label">Светлая тема</span>
           </button>
         </div>
-        <div class="summary-badges" role="status" aria-live="polite">
+        <div class="summary-badges" role="status" aria-live="polite" hidden>
           <span class="badge" id="badge-files">Файлов: 0</span>
           <span class="badge" id="badge-companies">Компаний: 0</span>
           <span class="badge" id="badge-periods">Периодов: 0</span>
@@ -68,11 +68,11 @@
               <span>Выбрать файлы</span>
               <input id="fileInput" type="file" multiple webkitdirectory aria-label="Выберите файлы" />
             </div>
-            <small class="section-subtitle">
+            <small id="dropInfoNote" class="section-subtitle" hidden>
               Поддерживаются форматы xlsx, csv, zip и смешанные наборы. Все расчёты выполняются локально.
             </small>
           </div>
-          <div class="upload-summary" aria-live="polite">
+          <div class="upload-summary" aria-live="polite" hidden>
             <article class="summary-card">
               <strong id="summary-files">0</strong>
               <span>Всего файлов</span>

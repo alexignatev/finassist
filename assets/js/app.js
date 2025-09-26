@@ -59,6 +59,7 @@ document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
   cacheElements();
+  setSummaryVisibility(false);
   initializeTheme();
   setUploadActionsVisibility(false);
   setDemoScenarioAvailability(false);
@@ -87,6 +88,8 @@ function cacheElements() {
   elements.fileInput = document.getElementById('fileInput');
   elements.demoScenario = document.getElementById('demoScenario');
   elements.themeToggle = document.getElementById('themeToggle');
+  elements.summaryBadges = document.querySelector('.summary-badges');
+  elements.uploadSummary = document.querySelector('.upload-summary');
   elements.summaryFiles = document.getElementById('summary-files');
   elements.summaryCompanies = document.getElementById('summary-companies');
   elements.summaryPeriods = document.getElementById('summary-periods');
@@ -94,6 +97,8 @@ function cacheElements() {
   elements.summaryDescription = document.getElementById('summary-description');
   elements.summaryPeriodsDetail = document.getElementById('summary-periods-detail');
   elements.recognitionLegend = document.getElementById('recognition-legend');
+  elements.dropHint = document.getElementById('dropHint');
+  elements.dropInfoNote = document.getElementById('dropInfoNote');
   elements.badgeFiles = document.getElementById('badge-files');
   elements.badgeCompanies = document.getElementById('badge-companies');
   elements.badgePeriods = document.getElementById('badge-periods');
@@ -422,8 +427,23 @@ function setUploadActionsVisibility(visible) {
   updateWorkflowButton();
 }
 
+function setSummaryVisibility(visible) {
+  const targets = [elements.summaryBadges, elements.uploadSummary, elements.dropInfoNote];
+  targets.forEach((element) => {
+    if (!element) {
+      return;
+    }
+    if (visible) {
+      element.removeAttribute('hidden');
+    } else {
+      element.setAttribute('hidden', '');
+    }
+  });
+}
+
 function renderScenarioSummary() {
   const scenario = state.currentScenario;
+  setSummaryVisibility(true);
   elements.summaryFiles.textContent = scenario.summary.files;
   elements.summaryCompanies.textContent = scenario.summary.companies;
   elements.summaryPeriods.textContent = scenario.summary.periods;
@@ -1322,14 +1342,9 @@ async function loadResources() {
 
 function displayResourceLoadError() {
   const message = 'Не удалось загрузить демо-данные. Откройте прототип через статический сервер или обновите страницу.';
-  elements.summaryDescription.textContent = message;
-  elements.recognitionLegend.textContent = 'Демо-набор недоступен.';
-  elements.summaryFiles.textContent = '0';
-  elements.summaryCompanies.textContent = '0';
-  elements.summaryPeriods.textContent = '0';
-  elements.summaryFormats.textContent = '—';
-  if (elements.summaryPeriodsDetail) {
-    elements.summaryPeriodsDetail.textContent = 'Периоды появятся после загрузки';
+  setSummaryVisibility(false);
+  if (elements.dropHint) {
+    elements.dropHint.textContent = message;
   }
   setUploadActionsVisibility(false);
 }
