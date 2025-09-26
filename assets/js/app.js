@@ -76,7 +76,6 @@ async function init() {
   initializeInventoryFilters();
   initializeTrafficFilters();
   initializeTrafficCompanies();
-  renderFinalScreen();
   updateCTA();
   renderTrafficList();
 
@@ -127,7 +126,6 @@ function cacheElements() {
   elements.showEliminations = document.getElementById('showEliminations');
   elements.eliminationDetails = document.getElementById('eliminationDetails');
   elements.consolidationHints = document.getElementById('consolidationHints');
-  elements.consolidationRules = document.getElementById('consolidationRules');
   elements.thresholdRange = document.getElementById('thresholdRange');
   elements.thresholdValue = document.getElementById('thresholdValue');
   elements.receivablesList = document.getElementById('receivablesList');
@@ -147,9 +145,6 @@ function cacheElements() {
   elements.trafficFilters = document.getElementById('trafficFilters');
   elements.trafficCompany = document.getElementById('trafficCompany');
   elements.trafficList = document.getElementById('trafficList');
-  elements.finalHeadline = document.getElementById('finalHeadline');
-  elements.finalPoints = document.getElementById('finalPoints');
-  elements.finalDisclaimer = document.getElementById('finalDisclaimer');
   elements.ctaButton = document.getElementById('ctaButton');
   elements.mappingTemplate = document.getElementById('mappingStepTemplate');
   elements.duplicateBulkTemplate = document.getElementById('duplicateBulkTemplate');
@@ -625,24 +620,31 @@ function renderPeriodGroups(files) {
       let batchCount = 0;
       while (periodIndex < periods.length && batchCount < FILE_BATCH_SIZE) {
         const [periodLabel, periodFiles] = periods[periodIndex];
-        const card = document.createElement('article');
+        const card = document.createElement('details');
         card.className = 'period-card';
-        const header = document.createElement('div');
+        const header = document.createElement('summary');
         header.className = 'period-card__header';
         const title = document.createElement('h4');
         title.textContent = periodLabel;
         const count = document.createElement('span');
         count.className = 'section-subtitle';
         count.textContent = `${periodFiles.length} файлов`;
+        const chevron = document.createElement('span');
+        chevron.className = 'period-card__chevron';
+        chevron.setAttribute('aria-hidden', 'true');
         header.appendChild(title);
         header.appendChild(count);
+        header.appendChild(chevron);
         card.appendChild(header);
+        const content = document.createElement('div');
+        content.className = 'period-card__content';
         const list = document.createElement('div');
         list.className = 'period-card__list';
         periodFiles.forEach((file) => {
           list.appendChild(createFileRow(file, { compact: true }));
         });
-        card.appendChild(list);
+        content.appendChild(list);
+        card.appendChild(content);
         fragment.appendChild(card);
         periodIndex += 1;
         batchCount += 1;
@@ -1577,12 +1579,6 @@ function renderHintsAndRules() {
     p.textContent = note;
     elements.consolidationHints.appendChild(p);
   });
-  elements.consolidationRules.innerHTML = '';
-  state.data.consolidation.ruleHints.forEach((hint) => {
-    const p = document.createElement('p');
-    p.textContent = hint;
-    elements.consolidationRules.appendChild(p);
-  });
 }
 
 function toggleEliminationList() {
@@ -1972,18 +1968,6 @@ function setActiveTab(tab) {
     elements.panelCompanies.hidden = true;
     elements.panelPeriods.hidden = false;
   }
-}
-
-function renderFinalScreen() {
-  const summary = state.data.finalSummary;
-  elements.finalHeadline.textContent = summary.headline;
-  elements.finalPoints.innerHTML = '';
-  summary.points.forEach((point) => {
-    const li = document.createElement('li');
-    li.textContent = point;
-    elements.finalPoints.appendChild(li);
-  });
-  elements.finalDisclaimer.textContent = summary.disclaimer;
 }
 
 function updateCTA() {
