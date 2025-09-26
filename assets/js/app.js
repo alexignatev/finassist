@@ -17,7 +17,8 @@ const state = {
   lastUploadCount: 0,
   virtualRenderTokens: {},
   showAdjustedMetrics: true,
-  activeDetector: 'receivables'
+  activeDetector: 'receivables',
+  workflowVisible: false
 };
 
 const elements = {};
@@ -112,8 +113,7 @@ function cacheElements() {
   elements.panelPeriods = document.getElementById('panel-periods');
   elements.attentionList = document.getElementById('attentionList');
   elements.duplicateList = document.getElementById('duplicateList');
-  elements.startMapping = document.getElementById('startMapping');
-  elements.startConsolidation = document.getElementById('startConsolidation');
+  elements.workflowFab = document.getElementById('workflowFab');
   elements.uploadScreen = document.getElementById('upload-screen');
   elements.progressScreen = document.getElementById('progress-screen');
   elements.triadScreen = document.getElementById('triad-screen');
@@ -153,7 +153,6 @@ function cacheElements() {
   elements.ctaButton = document.getElementById('ctaButton');
   elements.mappingTemplate = document.getElementById('mappingStepTemplate');
   elements.duplicateBulkTemplate = document.getElementById('duplicateBulkTemplate');
-  elements.uploadActions = document.querySelector('.upload-actions');
 }
 
 function initializeTheme() {
@@ -289,8 +288,9 @@ function setupEventHandlers() {
     button.addEventListener('keydown', detectorTabHandler);
   });
 
-  elements.startMapping.addEventListener('click', handleMappingButtonClick);
-  elements.startConsolidation.addEventListener('click', startConsolidation);
+  if (elements.workflowFab) {
+    elements.workflowFab.addEventListener('click', handleWorkflowButtonClick);
+  }
 
   elements.triadNavButtons.forEach((button) => {
     button.addEventListener('click', () => switchTriadPanel(button.dataset.target, button));
@@ -389,8 +389,7 @@ function loadScenario(scenario, uploadedCount = 0) {
   renderDuplicateList();
   setActiveMainTab('attention');
   setActiveTab('companies');
-  updateMappingButton();
-  updateStartButtonState();
+  updateWorkflowButton();
   resetScreensToUpload();
   elements.triadNavButtons.forEach((btn, idx) => {
     btn.setAttribute('aria-pressed', idx === 0 ? 'true' : 'false');
@@ -413,14 +412,19 @@ function loadScenario(scenario, uploadedCount = 0) {
 }
 
 function setUploadActionsVisibility(visible) {
-  if (!elements.uploadActions) {
+  state.workflowVisible = Boolean(visible);
+  const button = elements.workflowFab;
+  if (!button) {
     return;
   }
-  if (visible) {
-    elements.uploadActions.removeAttribute('hidden');
-  } else {
-    elements.uploadActions.setAttribute('hidden', '');
+  if (!state.workflowVisible) {
+    button.setAttribute('hidden', '');
+    button.dataset.stage = '';
+    button.disabled = true;
+    button.setAttribute('aria-disabled', 'true');
+    return;
   }
+  updateWorkflowButton();
 }
 
 function renderScenarioSummary() {
@@ -1060,38 +1064,73 @@ function handleDuplicateDecision(groupId, action) {
   state.lastDuplicateBulkAction = null;
   state.duplicateDecisions.set(group.group, action);
   renderDuplicateList();
-  updateStartButtonState();
+  updateWorkflowButton();
 }
 
 function getDuplicateGroupById(groupId) {
   return state.currentScenario?.duplicateResolutions?.find((group) => group.group === groupId) || null;
 }
 
-function updateMappingButton() {
-  const scenario = state.currentScenario;
-  if (!scenario || !scenario.mappingSteps || !scenario.mappingSteps.length) {
-    elements.startMapping.textContent = 'Сверка не требуется';
-    elements.startMapping.disabled = true;
-    elements.startMapping.setAttribute('aria-disabled', 'true');
-  } else {
-    if (state.mappingComplete) {
-      elements.startMapping.textContent = 'Проверить дубликаты';
-      elements.startMapping.disabled = false;
-      elements.startMapping.removeAttribute('aria-disabled');
-    } else {
-      elements.startMapping.textContent = 'Открыть мастер сверки';
-      elements.startMapping.disabled = false;
-      elements.startMapping.removeAttribute('aria-disabled');
-    }
+function updateWorkflowButton() {
+  const button = elements.workflowFab;
+  if (!button) {
+    return;
   }
-}
 
-function updateStartButtonState() {
-  const scenarioReady = Boolean(state.currentScenario);
-  const duplicates = state.currentScenario?.duplicateResolutions || [];
-  const duplicatesResolved = duplicates.every((group) => state.duplicateDecisions.has(group.group)) || !duplicates.length;
-  const ready = scenarioReady && state.mappingComplete && duplicatesResolved;
-  elements.startConsolidation.disabled = !ready;
+  if (!state.workflowVisible) {
+    button.setAttribute('hidden', '');
+    button.dataset.stage = '';
+    button.disabled = true;
+    button.setAttribute('aria-disabled', 'true');
+    return;
+  }
+
+  const scenario = state.currentScenario;
+  if (!scenario) {
+    button.textContent = 'Открыть мастер сверки';
+    button.disabled = true;
+    button.dataset.stage = '';
+    button.setAttribute('aria-disabled', 'true');
+    return;
+  }
+
+  const mappingSteps = Array.isArray(scenario.mappingSteps) ? scenario.mappingSteps.length : 0;
+  const hasMapping = mappingSteps > 0;
+  const duplicates = Array.isArray(scenario.duplicateResolutions)
+    ? scenario.duplicateResolutions
+    : [];
+  const duplicatesResolved = duplicates.every((group) => state.duplicateDecisions.has(group.group));
+
+  let stage;
+  if (hasMapping && !state.mappingComplete) {
+    stage = 'mapping';
+  } else if (duplicates.length && !duplicatesResolved) {
+    stage = 'duplicates';
+  } else {
+    stage = 'consolidate';
+  }
+
+  button.dataset.stage = stage;
+
+  if (stage === 'mapping') {
+    button.textContent = 'Открыть мастер сверки';
+    button.disabled = false;
+  } else if (stage === 'duplicates') {
+    button.textContent = 'Проверить дубликаты';
+    button.disabled = false;
+  } else {
+    button.textContent = 'Начать консолидацию';
+    const ready = (!hasMapping || state.mappingComplete) && (duplicatesResolved || !duplicates.length);
+    button.disabled = !ready;
+  }
+
+  if (button.disabled) {
+    button.setAttribute('aria-disabled', 'true');
+  } else {
+    button.removeAttribute('aria-disabled');
+  }
+
+  button.removeAttribute('hidden');
 }
 
 function openDuplicateBulkModal() {
@@ -1185,7 +1224,7 @@ function applyBulkDuplicateDecision(action) {
   });
   state.lastDuplicateBulkAction = action;
   renderDuplicateList();
-  updateStartButtonState();
+  updateWorkflowButton();
 }
 
 function getDuplicateBulkLabel(action) {
@@ -1293,29 +1332,35 @@ function displayResourceLoadError() {
   setUploadActionsVisibility(false);
 }
 
-function handleMappingButtonClick() {
-  if (!state.currentScenario) {
+function handleWorkflowButtonClick() {
+  if (!state.currentScenario || !elements.workflowFab || elements.workflowFab.disabled) {
     return;
   }
-  if (!state.mappingComplete) {
+
+  const stage = elements.workflowFab.dataset.stage;
+
+  if (stage === 'mapping') {
     openMappingWizard();
     return;
   }
-  const duplicates = state.currentScenario?.duplicateResolutions || [];
-  if (!duplicates.length) {
+
+  if (stage === 'duplicates') {
+    const duplicates = state.currentScenario?.duplicateResolutions || [];
     setActiveMainTab('duplicates');
     if (elements.tabDuplicates) {
       elements.tabDuplicates.focus();
     }
-    focusFirstDuplicateCard();
+    if (!duplicates.length) {
+      focusFirstDuplicateCard();
+      return;
+    }
+    openDuplicateBulkModal();
     return;
   }
 
-  setActiveMainTab('duplicates');
-  if (elements.tabDuplicates) {
-    elements.tabDuplicates.focus();
+  if (stage === 'consolidate') {
+    startConsolidation();
   }
-  openDuplicateBulkModal();
 }
 
 function openMappingWizard() {
@@ -1354,8 +1399,7 @@ function openMappingWizard() {
   modal.querySelector('[data-role="confirm"]').addEventListener('click', () => {
     state.mappingComplete = true;
     document.body.removeChild(backdrop);
-    updateMappingButton();
-    updateStartButtonState();
+    updateWorkflowButton();
   });
 
   backdrop.appendChild(fragment);
@@ -1380,6 +1424,7 @@ function startConsolidation() {
     return;
   }
   hideDuplicatePanel();
+  setUploadActionsVisibility(false);
   elements.uploadScreen.classList.remove('active');
   elements.progressScreen.classList.add('active');
   state.progressStart = performance.now();
@@ -1942,6 +1987,9 @@ function renderFinalScreen() {
 }
 
 function updateCTA() {
+  if (!elements.ctaButton) {
+    return;
+  }
   if (state.config?.ctaUrl) {
     elements.ctaButton.href = state.config.ctaUrl;
   }
