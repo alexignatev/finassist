@@ -1674,6 +1674,16 @@ main {
   }
 }
 
+@media (max-width: 600px) {
+  .triad-nav {
+    flex-direction: column;
+  }
+
+  .triad-nav button {
+    width: 100%;
+  }
+}
+
 @media (max-width: 480px) {
   .drop-zone {
     padding: 24px;
@@ -1681,13 +1691,5 @@ main {
 
   .summary-card {
     min-height: auto;
-  }
-
-  .triad-nav {
-    flex-direction: column;
-  }
-
-  .triad-nav button {
-    width: 100%;
   }
 }
