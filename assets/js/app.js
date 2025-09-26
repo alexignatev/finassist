@@ -1718,11 +1718,10 @@ function initializeTrafficFilters() {
   Object.entries(labels).forEach(([value, label]) => {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'button-secondary';
+    button.className = 'detector-tab-btn traffic-filter-btn';
     button.textContent = label;
     button.dataset.value = value;
     if (value === 'all') {
-      button.classList.add('active');
       button.setAttribute('aria-pressed', 'true');
     } else {
       button.setAttribute('aria-pressed', 'false');
@@ -1730,10 +1729,8 @@ function initializeTrafficFilters() {
     button.addEventListener('click', () => {
       state.trafficFilter = value;
       elements.trafficFilters.querySelectorAll('button').forEach((btn) => {
-        btn.classList.remove('active');
         btn.setAttribute('aria-pressed', 'false');
       });
-      button.classList.add('active');
       button.setAttribute('aria-pressed', 'true');
       renderTrafficList();
     });
@@ -1769,6 +1766,7 @@ function renderTrafficList() {
     .forEach((item) => {
       const card = document.createElement('article');
       card.className = 'traffic-card';
+      card.dataset.status = item.status;
       const header = document.createElement('div');
       header.innerHTML = `<strong>${item.name}</strong> • ${item.company}`;
       card.appendChild(header);
