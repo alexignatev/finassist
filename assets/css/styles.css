@@ -1633,6 +1633,47 @@ main {
 
 }
 
+@media (max-width: 600px) {
+  .detector-tabs {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .detector-tab-btn {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .detector-panels {
+    gap: 16px;
+  }
+
+  .detector-panel {
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .range-control {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .receivable-row,
+  .inventory-row {
+    grid-template-columns: 1fr;
+  }
+
+  .receivable-row span,
+  .inventory-row span {
+    grid-column: 1 / -1;
+  }
+
+  .inventory-flags {
+    justify-content: flex-start;
+  }
+}
+
 @media (max-width: 480px) {
   .drop-zone {
     padding: 24px;
