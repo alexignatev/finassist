@@ -1540,20 +1540,37 @@ main {
   }
 
   .upload-actions {
-    position: static;
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    bottom: 24px;
     flex-direction: column;
     align-items: stretch;
-    padding: 16px;
+    padding: 16px 18px;
     gap: 12px;
   }
 
+  .upload-actions__info {
+    gap: 2px;
+  }
+
+  .upload-actions__info p {
+    display: none;
+  }
+
+  .upload-actions__info h3 {
+    font-size: 16px;
+  }
+
   .upload-actions__buttons {
+    width: 100%;
     justify-content: stretch;
   }
 
   .upload-actions__buttons .button-primary,
   .upload-actions__buttons .button-secondary {
     width: 100%;
+    min-width: 0;
   }
 
   .file-row {
@@ -1571,6 +1588,46 @@ main {
 
   .file-actions {
     grid-column: 1 / -1;
+  }
+
+  .file-card__summary {
+    padding: 16px 18px;
+  }
+
+  .file-card__top {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'name'
+      'status';
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .file-card__top .file-card__name {
+    grid-area: name;
+  }
+
+  .file-card__top .file-status {
+    grid-area: status;
+    justify-self: flex-start;
+  }
+
+  .file-card__top--expandable {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'name caret'
+      'status status';
+  }
+
+  .file-card__top--expandable .file-card__caret {
+    grid-area: caret;
+    justify-self: flex-end;
+  }
+
+  .file-card__tags {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
   }
 
   .receivable-row,
