@@ -645,6 +645,53 @@ function renderPeriodGroups(files) {
   requestAnimationFrame(renderNextYear);
 }
 
+function createSeededGenerator(seedSource) {
+  let hash = 0;
+  const source = String(seedSource || '');
+  for (let i = 0; i < source.length; i += 1) {
+    hash = (hash << 5) - hash + source.charCodeAt(i);
+    hash |= 0;
+  }
+
+  if (hash === 0) {
+    hash = 123456789;
+  }
+
+  return () => {
+    hash = (hash * 1664525 + 1013904223) % 4294967296;
+    return (hash >>> 0) / 4294967296;
+  };
+}
+
+function sampleHints(hints, options = {}) {
+  const uniqueHints = [...new Set(hints.filter(Boolean))];
+
+  if (!uniqueHints.length) {
+    return uniqueHints;
+  }
+
+  const summaryIndex = uniqueHints.findIndex((hint) => hint.startsWith('Всего:'));
+  const summaryHint = summaryIndex >= 0 ? uniqueHints.splice(summaryIndex, 1)[0] : null;
+
+  const seededRandom = createSeededGenerator(options.seed);
+  const maxAdditional = Math.min(uniqueHints.length, 4);
+  const minAdditional = summaryHint ? 0 : Math.min(1, maxAdditional);
+  const range = maxAdditional - minAdditional + 1;
+  const additionalCount = range > 0 ? minAdditional + Math.floor(seededRandom() * range) : 0;
+
+  for (let i = uniqueHints.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(seededRandom() * (i + 1));
+    [uniqueHints[i], uniqueHints[j]] = [uniqueHints[j], uniqueHints[i]];
+  }
+
+  const selected = summaryHint ? [summaryHint] : [];
+  for (let i = 0; i < additionalCount; i += 1) {
+    selected.push(uniqueHints[i]);
+  }
+
+  return selected;
+}
+
 function collectMappingHints(file, options) {
   if (!file || options?.showHint === false) {
     return [];
@@ -692,7 +739,7 @@ function collectMappingHints(file, options) {
     }
   }
 
-  return [...new Set(hints)];
+  return sampleHints(hints, { seed: `${file.company || ''}-${file.period || ''}-${file.name || ''}` });
 }
 
 function createFileRow(file, options = {}) {
