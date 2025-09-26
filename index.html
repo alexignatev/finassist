@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Solward — интерактивный прототип</title>
+    <link rel="stylesheet" href="assets/css/styles.css" />
+  </head>
+  <body>
+    <a class="visually-hidden" href="#main-content">Перейти к содержимому</a>
+    <div class="app">
+      <header>
+        <div class="header-top">
+          <div class="header-text">
+            <h1>Solward</h1>
+            <p>Интерактивный прототип: загрузка группы файлов, консолидация и ключевые аналитические экраны.</p>
+          </div>
+          <button
+            id="themeToggle"
+            class="button-ghost theme-toggle"
+            type="button"
+            aria-pressed="false"
+          >
+            <span class="theme-toggle__icon" aria-hidden="true"></span>
+            <span class="theme-toggle__label">Светлая тема</span>
+          </button>
+        </div>
+        <div class="summary-badges" role="status" aria-live="polite">
+          <span class="badge" id="badge-files">Файлов: 0</span>
+          <span class="badge" id="badge-companies">Компаний: 0</span>
+          <span class="badge" id="badge-periods">Периодов: 0</span>
+          <span class="badge" id="badge-formats">Форматы: —</span>
+        </div>
+      </header>
+      <main id="main-content">
+        <section id="upload-screen" class="screen active" aria-labelledby="upload-title">
+          <div class="section-title">
+            <div>
+              <h2 id="upload-title">Загрузка и нормализация данных</h2>
+              <p class="section-subtitle">
+                Поддерживается drag&drop папок и отдельных файлов. Система показывает, что распознано,
+                где требуется уточнение и какие есть дубликаты.
+              </p>
+            </div>
+            <button id="demoScenario" class="button-secondary" type="button">
+              Использовать демо-набор
+            </button>
+          </div>
+          <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-describedby="dropHint">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M12 3L7 8h3v4h4V8h3l-5-5z"
+                stroke="var(--accent)"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M5 15v2a2 2 0 002 2h10a2 2 0 002-2v-2"
+                stroke="var(--accent)"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <p id="dropHint">Перетащите файлы или папку сюда, либо выберите вручную.</p>
+            <div class="input-file button-primary">
+              <span>Выбрать файлы</span>
+              <input id="fileInput" type="file" multiple webkitdirectory aria-label="Выберите файлы" />
+            </div>
+            <small class="section-subtitle">
+              Поддерживаются форматы xlsx, csv, zip и смешанные наборы. Все расчёты выполняются локально.
+            </small>
+          </div>
+          <div class="upload-summary" aria-live="polite">
+            <article class="summary-card">
+              <strong id="summary-files">0</strong>
+              <span>Всего файлов</span>
+              <p id="summary-description" class="section-subtitle"></p>
+            </article>
+            <article class="summary-card">
+              <strong id="summary-companies">0</strong>
+              <span>Компаний</span>
+              <p id="recognition-legend" class="section-subtitle">
+                Распознано: 0 • Требует сверки: 0 • Дубликаты: 0
+              </p>
+            </article>
+            <article class="summary-card">
+              <strong id="summary-periods">0</strong>
+              <span>Периодов</span>
+              <p id="summary-periods-detail" class="section-subtitle">Периоды появятся после загрузки</p>
+            </article>
+            <article class="summary-card">
+              <strong id="summary-formats">—</strong>
+              <span>Форматы</span>
+              <p class="section-subtitle">xlsx • csv • zip</p>
+            </article>
+          </div>
+          <div class="upload-tabs">
+            <div class="tablist" role="tablist" aria-label="Разделы проверки">
+              <button
+                role="tab"
+                id="tab-attention"
+                aria-selected="true"
+                aria-controls="panel-attention"
+              >
+                Файлы, требующие внимания
+              </button>
+              <button
+                role="tab"
+                id="tab-duplicates"
+                aria-selected="false"
+                aria-controls="panel-duplicates"
+              >
+                Дубликаты
+              </button>
+              <button
+                role="tab"
+                id="tab-catalog"
+                aria-selected="false"
+                aria-controls="panel-catalog"
+              >
+                Каталог загрузки
+              </button>
+            </div>
+
+            <div
+              id="panel-attention"
+              class="upload-tabpanel"
+              role="tabpanel"
+              aria-labelledby="tab-attention"
+            >
+              <p class="section-subtitle">
+                Подтвердите подсказки системы, чтобы перейти к консолидации. Все предположения уже заполнены.
+              </p>
+              <p class="section-subtitle subtle-note">Мастер сверки доступен в панели действий ниже.</p>
+              <div class="file-list" id="attentionList" aria-live="polite"></div>
+            </div>
+
+            <div
+              id="panel-duplicates"
+              class="upload-tabpanel"
+              role="tabpanel"
+              aria-labelledby="tab-duplicates"
+              hidden
+            >
+              <p class="section-subtitle">
+                Выберите действие прямо на карточке компании: оставить старый файл, оставить новый или объединить данные.
+              </p>
+              <div class="file-list" id="duplicateList" aria-live="polite"></div>
+            </div>
+
+            <div
+              id="panel-catalog"
+              class="upload-tabpanel"
+              role="tabpanel"
+              aria-labelledby="tab-catalog"
+              hidden
+            >
+              <p class="section-subtitle">
+                Сгруппируйте загруженные файлы по компаниям или по периодам, чтобы увидеть полную картину.
+              </p>
+              <div class="tablist" role="tablist" aria-label="Группировка файлов">
+                <button role="tab" id="tab-companies" aria-selected="true" aria-controls="panel-companies">
+                  По компаниям
+                </button>
+                <button role="tab" id="tab-periods" aria-selected="false" aria-controls="panel-periods">
+                  По периодам
+                </button>
+              </div>
+              <div id="panel-companies" role="tabpanel" aria-labelledby="tab-companies">
+                <div class="file-list" id="companyFileList" aria-live="polite"></div>
+              </div>
+              <div id="panel-periods" role="tabpanel" aria-labelledby="tab-periods" hidden>
+                <div class="file-list" id="periodFileList" aria-live="polite"></div>
+              </div>
+            </div>
+          </div>
+          <div class="upload-actions" role="complementary" hidden>
+            <div class="upload-actions__info">
+              <h3 class="section-subtitle">Панель действий</h3>
+              <p class="section-subtitle">Переходите к сверке и запускайте консолидацию из одного места.</p>
+            </div>
+            <div class="upload-actions__buttons">
+              <button id="startMapping" type="button" class="button-secondary" disabled>
+                Открыть мастер сверки
+              </button>
+              <button id="startConsolidation" class="button-primary" type="button" disabled>
+                Начать консолидацию
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section id="progress-screen" class="screen" aria-labelledby="progress-title">
+          <div class="section-title">
+            <div>
+              <h2 id="progress-title">Консолидация запущена</h2>
+              <p class="section-subtitle">Имитация обработки занимает около 30 секунд.</p>
+            </div>
+          </div>
+          <div class="progress-container">
+            <div class="progress-bar" aria-hidden="true">
+              <span id="progressIndicator"></span>
+            </div>
+            <div id="progressValue" aria-live="polite">0%</div>
+            <div class="progress-steps" id="progressSteps" aria-hidden="true"></div>
+            <p class="section-subtitle" id="progressStatus">Подготовка</p>
+          </div>
+        </section>
+
+        <section id="triad-screen" class="screen" aria-labelledby="triad-title">
+          <div class="section-title">
+            <div>
+              <h2 id="triad-title">Комплекс отчётов готов</h2>
+              <p class="section-subtitle">Минуты вместо дней. Минимум ручного труда. Консолидация завершена.</p>
+            </div>
+          </div>
+          <nav class="triad-nav" aria-label="Навигация по экрану отчётов">
+            <button type="button" class="triad-nav-btn" data-target="consolidation" aria-pressed="true">
+              Консолидация
+            </button>
+            <button type="button" class="triad-nav-btn" data-target="detectors" aria-pressed="false">
+              Сигнальные отчёты
+            </button>
+            <button type="button" class="triad-nav-btn" data-target="liquidation" aria-pressed="false">
+              Ликвидационный баланс
+            </button>
+            <button type="button" class="triad-nav-btn" data-target="traffic" aria-pressed="false">
+              Светофор
+            </button>
+            <button type="button" class="triad-nav-btn" data-target="final" aria-pressed="false">
+              Итог
+            </button>
+          </nav>
+          <div id="triad-panels">
+            <div id="panel-consolidation" class="triad-panel" role="region" aria-labelledby="triad-title">
+              <div class="metrics-grid" id="consolidationMetrics"></div>
+              <div class="elimination-controls">
+                <button
+                  id="toggleAdjustments"
+                  class="button-secondary"
+                  type="button"
+                  aria-pressed="true"
+                >
+                  Показать до исключений
+                </button>
+                <button
+                  id="showEliminations"
+                  class="button-secondary elimination-button"
+                  type="button"
+                  aria-expanded="false"
+                  aria-controls="eliminationDetails"
+                >
+                  Показать снятые внутригрупповые обороты
+                </button>
+              </div>
+              <div id="eliminationDetails" class="elimination-list" hidden></div>
+              <aside class="info-hints" id="consolidationHints"></aside>
+              <aside class="info-hints" id="consolidationRules"></aside>
+            </div>
+            <div id="panel-detectors" class="triad-panel" role="region" hidden>
+              <nav class="detector-tabs" aria-label="Вкладки сигнальных отчётов">
+                <button
+                  type="button"
+                  class="detector-tab-btn"
+                  data-detector="receivables"
+                  aria-controls="detector-receivables"
+                  aria-pressed="true"
+                >
+                  Просроченная задолженность
+                </button>
+                <button
+                  type="button"
+                  class="detector-tab-btn"
+                  data-detector="inventory"
+                  aria-controls="detector-inventory"
+                  aria-pressed="false"
+                >
+                  Запасы и неликвид
+                </button>
+              </nav>
+              <div class="detector-panels">
+                <section
+                  id="detector-receivables"
+                  class="detector-panel"
+                  aria-labelledby="receivable-title"
+                >
+                  <div>
+                    <h3 id="receivable-title">Просроченная задолженность</h3>
+                    <p class="section-subtitle">
+                      Управляйте порогом по дням. Всё, что выше порога, подсвечивается и может быть отправлено в светофор.
+                    </p>
+                  </div>
+                  <div class="range-control">
+                    <label for="thresholdRange">Порог дней</label>
+                    <input type="range" id="thresholdRange" min="100" max="270" value="180" />
+                    <span id="thresholdValue">180</span>
+                  </div>
+                  <div id="receivablesList"></div>
+                  <button id="sendToTraffic" class="button-secondary" type="button">
+                    Отправить в светофор
+                  </button>
+                  <p class="section-subtitle" id="trafficMessage" aria-live="polite"></p>
+                </section>
+                <section
+                  id="detector-inventory"
+                  class="detector-panel"
+                  aria-labelledby="inventory-title"
+                  hidden
+                >
+                  <div>
+                    <h3 id="inventory-title">Запасы и неликвид</h3>
+                    <p class="section-subtitle">
+                      Отметьте признаки, чтобы подсветить спорные позиции. Запасы и дебиторка — главные зоны внимания.
+                    </p>
+                  </div>
+                  <div id="inventoryFilters"></div>
+                  <div id="inventoryList"></div>
+                </section>
+              </div>
+            </div>
+            <div id="panel-liquidation" class="triad-panel" role="region" hidden>
+              <div class="section-title">
+                <div>
+                  <h3 class="section-subtitle">Очистка баланса от мусора</h3>
+                  <p class="section-subtitle">Показываем, сколько денег останется у собственника при продаже бизнеса.</p>
+                </div>
+                <button id="cleanBalance" class="button-primary" type="button">Очистить</button>
+              </div>
+              <div class="liquidation-layout">
+                <div class="liquidation-card">
+                  <h3>До очистки</h3>
+                  <p class="section-subtitle" id="liquidationBeforeSummary"></p>
+                  <ul id="liquidationAssets"></ul>
+                </div>
+                <div class="liquidation-card">
+                  <h3>Сценарные списания</h3>
+                  <ul id="liquidationAdjustments"></ul>
+                </div>
+                <div class="liquidation-card">
+                  <h3>После очистки</h3>
+                  <p class="section-subtitle" id="liquidationAfterSummary"></p>
+                  <p id="ownerStatement"></p>
+                </div>
+              </div>
+            </div>
+            <div id="panel-traffic" class="triad-panel" role="region" hidden>
+              <div class="traffic-controls">
+                <div role="group" aria-label="Фильтр статуса" id="trafficFilters"></div>
+                <label for="trafficCompany">Компания</label>
+                <select id="trafficCompany" aria-label="Фильтр по компании">
+                  <option value="all">Все компании</option>
+                </select>
+              </div>
+              <div class="traffic-list" id="trafficList"></div>
+            </div>
+            <div id="panel-final" class="triad-panel final-screen" role="region" hidden>
+              <h3 id="finalHeadline"></h3>
+              <ul id="finalPoints"></ul>
+              <p class="disclaimer" id="finalDisclaimer"></p>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <a id="ctaButton" class="cta-floating" href="#" target="_blank" rel="noopener">Записаться на тест-драйв</a>
+    <template id="duplicateBulkTemplate">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="duplicateBulkTitle">
+        <h3 id="duplicateBulkTitle">Как обработать дубликаты?</h3>
+        <p>Выберите массовое действие для обнаруженных дубликатов. Решение можно изменить позже.</p>
+        <div class="modal-options" data-role="options"></div>
+        <div class="modal-actions">
+          <button type="button" class="button-secondary" data-role="close">Закрыть</button>
+        </div>
+      </div>
+    </template>
+    <template id="mappingStepTemplate">
+      <div class="modal" role="dialog" aria-modal="true" aria-live="polite">
+        <h3>Сверка и подготовка данных к консолидации</h3>
+        <div data-role="list" class="modal-list"></div>
+        <div class="modal-actions">
+          <button type="button" class="button-secondary" data-role="cancel">Закрыть</button>
+          <button type="button" class="button-primary" data-role="confirm">Подтвердить подготовку</button>
+        </div>
+      </div>
+    </template>
+    <script src="assets/js/offlineData.js" defer></script>
+    <script src="assets/js/app.js" defer></script>
+  </body>
+</html>

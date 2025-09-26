@@ -1,0 +1,24 @@
+{
+  "ctaUrl": "https://solward.example/test-drive",
+  "loading": {
+    "minSeconds": 25,
+    "maxSeconds": 35,
+    "stageLabels": [
+      "Импорт",
+      "Нормализация",
+      "Сшивка",
+      "Проверки",
+      "Готово"
+    ]
+  },
+  "receivables": {
+    "defaultThreshold": 180,
+    "minDays": 100,
+    "maxDays": 270
+  },
+  "inventoryMarkers": [
+    "долго лежит",
+    "истёк срок",
+    "брак"
+  ]
+}
